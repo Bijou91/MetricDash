@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: sqa_db
+    environment:
+      POSTGRES_USER: sqa_user
+      POSTGRES_PASSWORD: sqa_password
+      POSTGRES_DB: sqa_dashboard
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - sqa_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sqa_user -d sqa_dashboard"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: sqa_api
+    environment:
+      - DATABASE_URL=postgresql://sqa_user:sqa_password@db:5432/sqa_dashboard
+      - NODE_ENV=development
+      - PORT=4000
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - sqa_network
+    command: npm run dev
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: sqa_web
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:4000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api
+    networks:
+      - sqa_network
+    command: npm run dev
+
+volumes:
+  pgdata:
+
+networks:
+  sqa_network:
+    driver: bridge

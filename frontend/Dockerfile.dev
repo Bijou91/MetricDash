@@ -1,0 +1,12 @@
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Archivos copiados despues (se usa volumen para dev)
+# Solo para preparar la base
+COPY package*.json ./
+
+# Se instalarán via command o entrypoint
+RUN npm install
+
+CMD ["npm", "run", "dev"]
