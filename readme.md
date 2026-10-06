@@ -1,4 +1,4 @@
-# SQA Dashboard
+# MetricDash
 
 Herramienta de software diseñada para gestionar y consultar las actividades de calidad (SQA) de los proyectos. El sistema está estructurado bajo una arquitectura modular desacoplada y se ejecuta completamente mediante contenedores Docker.
 
