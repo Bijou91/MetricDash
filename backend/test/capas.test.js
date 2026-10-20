@@ -213,6 +213,14 @@ test('CU-01: registrarProyecto sin periodo académico activo responde 400', asyn
   await assert.rejects(registroService.registrarProyecto(registroValido), { status: 400 });
 });
 
+test('CU-01: registrarProyecto con periodId inválido o no activo responde 400', async () => {
+  mock.method(proyectoRepo, 'obtenerPeriodoActivo', async () => periodoActivo);
+  await assert.rejects(
+    registroService.registrarProyecto({ ...registroValido, periodId: 'periodo-invalido' }),
+    (err) => err.status === 400 && err.message.includes('no corresponde al periodo activo'),
+  );
+});
+
 const proyectoRouter = require('../src/controllers/ProyectoController');
 
 test('CU-01 ProyectoController FA-02.02: roles incompletos responden 400 con los faltantes', async () => {

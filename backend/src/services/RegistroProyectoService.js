@@ -15,25 +15,24 @@ async function registrarProyecto(dto = {}) {
     throw error;
   }
 
-  // 2. Determinar periodo académico (por ID provisto o el activo en el sistema)
-  let periodo;
-  if (dto.periodId || dto.periodoId) {
-    const pId = dto.periodId || dto.periodoId;
-    const activo = await proyectoRepo.obtenerPeriodoActivo();
-    if (activo && activo.id === pId) {
-      periodo = activo;
-    } else {
-      periodo = activo; // Fallback al activo si coincide
-    }
-  } else {
-    periodo = await proyectoRepo.obtenerPeriodoActivo();
-  }
-
-  if (!periodo) {
+  // 2. Determinar y validar estrictamente el periodo académico activo en PostgreSQL
+  const periodoActivo = await proyectoRepo.obtenerPeriodoActivo();
+  if (!periodoActivo) {
     const err = new Error('No existe un ciclo escolar / periodo académico activo configurado.');
     err.status = 400;
     throw err;
   }
+
+  const pIdEntrante = dto.periodId || dto.periodoId;
+  if (pIdEntrante && String(pIdEntrante).trim() !== String(periodoActivo.id).trim()) {
+    const err = new Error(
+      `El periodo académico especificado ('${pIdEntrante}') no es válido o no corresponde al periodo activo actual ('${periodoActivo.id}').`
+    );
+    err.status = 400;
+    throw err;
+  }
+
+  const periodo = periodoActivo;
 
   // 3. FN-02 / FA-02.01: Regla monoproyecto (un solo proyecto por periodo)
   const yaExiste = await proyectoRepo.existeProyectoEnPeriodo(periodo.id);
@@ -121,8 +120,14 @@ async function registrarProyecto(dto = {}) {
       totalActividades: persistido.actividades.length,
       actividades: persistido.actividades,
     },
+    planQA: {
+      tipoProyecto: planQA.tipoProyecto,
+      totalActividades: persistido.actividades.length,
+      actividades: persistido.actividades,
+    },
     lineaBase: persistido.lineaBase,
     tablero: tableroInicial,
+    tableroInicial: persistido.corte || tableroInicial,
     mensaje: 'Proyecto registrado exitosamente con su plan base de QA y línea base inicial creada.',
   };
 }

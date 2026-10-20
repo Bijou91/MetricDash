@@ -4,8 +4,8 @@ export default function TableroInicialWidget({ tablero, lineaBase }) {
   if (!tablero && !lineaBase) return null;
 
   const kloc = tablero?.kloc || lineaBase?.kloc || 0;
-  const plannedActs = tablero?.plannedSqaActs || tablero?.planned_sqa_acts || lineaBase?.plannedSqaActs || 0;
-  const executedActs = tablero?.executedSqaActs || tablero?.executed_sqa_acts || 0;
+  const plannedActs = tablero?.plannedSqaActs ?? tablero?.planned_sqa_acts ?? lineaBase?.plannedSqaActs ?? 0;
+  const executedActs = tablero?.executedSqaActs ?? tablero?.executed_sqa_acts ?? 0;
   const healthStatus = tablero?.healthStatus || tablero?.health_status || 'SIN_DATOS';
   const fechaAprobacion = lineaBase?.approvalDate || lineaBase?.approval_date;
 
@@ -37,7 +37,7 @@ export default function TableroInicialWidget({ tablero, lineaBase }) {
         <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
           <span className="text-xs font-semibold uppercase text-slate-500">Actividades SQA Planificadas</span>
           <div className="mt-1 text-2xl font-bold text-slate-800">{plannedActs}</div>
-          <p className="text-xs text-slate-400">0 ejecutadas a la fecha ({executedActs} de {plannedActs})</p>
+          <p className="text-xs text-slate-400">{executedActs} ejecutadas a la fecha ({executedActs} de {plannedActs})</p>
         </div>
 
         <div className="rounded-md border border-slate-100 bg-slate-50 p-3">

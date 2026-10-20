@@ -177,9 +177,9 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
           existe: true,
           proyecto: resp.data.proyecto,
           roles: resp.data.roles,
-          planQA: resp.data.planQA,
+          planQA: resp.data.planQA || resp.data.plan,
           lineaBase: resp.data.lineaBase,
-          tableroInicial: resp.data.tableroInicial,
+          tableroInicial: resp.data.tableroInicial || resp.data.tablero,
         });
         setMensaje({
           tipo: 'exito',
@@ -188,6 +188,7 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
         if (onProyectoRegistrado) {
           onProyectoRegistrado(resp.data.proyecto);
         }
+        await cargarEstadoInicial();
       }
     } catch (err) {
       setMensaje({
@@ -199,20 +200,48 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
     }
   }
 
-  // Actualizar estado de una actividad en vivo
+  // Actualizar estado de una actividad en vivo y recalcular reactivamente el tablero inicial
   async function handleCambiarEstadoActividad(actividadId, nuevoEstado) {
     try {
       const actualizada = await proyectosApi.actualizarEstadoActividad(actividadId, nuevoEstado);
-      if (actualizada && proyectoActivo) {
-        setProyectoActivo((prev) => ({
-          ...prev,
-          planQA: {
-            ...prev.planQA,
-            actividades: prev.planQA.actividades.map((a) =>
-              a.id === actividadId ? { ...a, status: nuevoEstado } : a
-            ),
-          },
-        }));
+      if (actualizada) {
+        setProyectoActivo((prev) => {
+          if (!prev) return prev;
+
+          // 1. Mapear la lista de actividades con el nuevo estado
+          const actividadesActualizadas = (prev.planQA?.actividades || []).map((a) =>
+            a.id === actividadId ? { ...a, status: nuevoEstado } : a
+          );
+
+          // 2. Recalcular el total de actividades ejecutadas (DONE / REALIZADA)
+          const totalEjecutadas = actividadesActualizadas.filter(
+            (a) => a.status === 'DONE' || a.status === 'REALIZADA'
+          ).length;
+
+          // 3. Actualizar reactivamente el tablero inicial manteniendo inmutabilidad
+          const tableroActualizado = prev.tableroInicial
+            ? {
+                ...prev.tableroInicial,
+                executedSqaActs: totalEjecutadas,
+                executed_sqa_acts: totalEjecutadas,
+              }
+            : {
+                executedSqaActs: totalEjecutadas,
+                executed_sqa_acts: totalEjecutadas,
+                plannedSqaActs: actividadesActualizadas.length,
+                healthStatus: 'SIN_DATOS',
+              };
+
+          return {
+            ...prev,
+            planQA: {
+              ...prev.planQA,
+              actividades: actividadesActualizadas,
+            },
+            tableroInicial: tableroActualizado,
+            tablero: tableroActualizado,
+          };
+        });
       }
     } catch (err) {
       alert(`Error al actualizar actividad: ${err.message}`);
@@ -251,8 +280,11 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
 
   const errorDe = (campo) => errores.filter((e) => e.campo === campo);
 
-  // Verificación de los 3 roles obligatorios en tiempo real
-  const rolesPresentes = new Set(integrantes.map((i) => i.role));
+  // Verificación de los 3 roles obligatorios en tiempo real (FA-02.02: solo si tienen nombre asignado no vacío)
+  const integrantesConNombre = integrantes.filter(
+    (i) => i.memberName && i.memberName.trim().length > 0
+  );
+  const rolesPresentes = new Set(integrantesConNombre.map((i) => i.role));
   const tieneQA = rolesPresentes.has('QA');
   const tieneTecnico = rolesPresentes.has('TECNICO');
   const tieneGestion = rolesPresentes.has('GESTION_PROYECTO');
