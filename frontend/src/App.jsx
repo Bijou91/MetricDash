@@ -1,4 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import ConfigMetricasView from './components/ConfigMetricasView';
+
+// shortcut: proyecto demo sembrado en schema.sql; tomarlo del proyecto activo cuando exista CU-01.
+const PROYECTO_ID = import.meta.env.VITE_PROYECTO_ID || '00000000-0000-0000-0000-000000000001';
 
 export default function App() {
   const [apiStatus, setApiStatus] = useState('Verificando conexión con el backend...');
@@ -11,18 +15,22 @@ export default function App() {
   }, []);
 
   return (
-    <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', padding: '2rem', maxWidth: '800px', margin: '0 auto', color: '#1e293b' }}>
-      <header style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-        <h1 style={{ margin: 0, color: '#1e3a8a' }}>SQA Dashboard</h1>
-        <p style={{ margin: '0.5rem 0 0', color: '#64748b' }}>
+    <div className="mx-auto max-w-4xl p-4 font-sans text-slate-800 sm:p-8">
+      <header className="mb-6 border-b border-slate-200 pb-4">
+        <h1 className="text-3xl font-bold text-blue-900">SQA Dashboard</h1>
+        <p className="mt-2 text-slate-500">
           Herramienta de software para monitorear y gestionar actividades de Aseguramiento de Calidad de Software.
         </p>
       </header>
 
       <main>
-        <div style={{ padding: '1rem 1.25rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }}>
-          <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem' }}>Estado de la Arquitectura Base</h3>
-          <p style={{ margin: 0 }}><strong>API Backend:</strong> {apiStatus}</p>
+        <div className="rounded-lg border border-slate-300 bg-slate-50 px-5 py-4">
+          <h3 className="mb-2 font-semibold">Estado de la Arquitectura Base</h3>
+          <p><strong>API Backend:</strong> {apiStatus}</p>
+        </div>
+
+        <div className="mt-6">
+          <ConfigMetricasView proyectoId={PROYECTO_ID} />
         </div>
       </main>
     </div>
