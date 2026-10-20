@@ -1,5 +1,13 @@
 const pool = require('../db/pool');
 
+function normalizarEstadoActividad(st) {
+  if (!st) return 'PLANNED';
+  const val = String(st).toUpperCase();
+  if (val === 'REALIZADA' || val === 'DONE') return 'DONE';
+  if (val === 'EN_CURSO' || val === 'IN_PROGRESS') return 'IN_PROGRESS';
+  return 'PLANNED';
+}
+
 // Un proyecto está activo si pertenece al periodo académico activo (ER: academic_periods.is_active).
 async function obtenerActivo(proyectoId) {
   const { rows } = await pool.query(
@@ -105,14 +113,6 @@ async function guardarProyectoCompleto({ proyecto, roles, actividades, lineaBase
     miembrosGuardados.push(mRows[0]);
   }
 
-function normalizarEstadoActividad(st) {
-  if (!st) return 'PLANNED';
-  const val = String(st).toUpperCase();
-  if (val === 'REALIZADA' || val === 'DONE') return 'DONE';
-  if (val === 'EN_CURSO' || val === 'IN_PROGRESS') return 'IN_PROGRESS';
-  return 'PLANNED';
-}
-
   // 3. Insertar actividades SQA
   const actividadesGuardadas = [];
   for (const act of actividades) {
@@ -181,7 +181,7 @@ async function actualizarEstadoActividad(actividadId, status) {
   const statusNorm = normalizarEstadoActividad(status);
   const { rows } = await pool.query(
     `UPDATE sqa_activities 
-        SET status = $1, execution_date = CASE WHEN $1 = 'DONE' THEN CURRENT_DATE ELSE execution_date END
+        SET status = $1::varchar, execution_date = CASE WHEN $1::varchar = 'DONE' THEN CURRENT_DATE ELSE execution_date END
       WHERE id = $2 
       RETURNING *`,
     [statusNorm, actividadId],
