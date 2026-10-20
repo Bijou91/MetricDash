@@ -55,6 +55,8 @@ const registro = {
     { role: 'QA', memberName: 'Héctor Varela' },
     { role: 'TECNICO', memberName: 'Carlos Aguirre' },
     { role: 'GESTION_PROYECTO', memberName: 'Karol Espino' },
+    { role: 'DEVELOPER', memberName: 'Dev Uno' },
+    { role: 'DEVELOPER', memberName: 'Dev Dos' },
   ],
 };
 const metricas = (v) => ({
@@ -110,14 +112,15 @@ async function main() {
       contar('configuration_baselines', 'WHERE project_id = $1', p),
     ]);
     const corte = (await pool.query('SELECT * FROM evaluation_cutoffs WHERE project_id = $1', p)).rows;
-    assert.strictEqual(miembros, 3);
+    assert.strictEqual(miembros, 5);
     assert.ok(actividades >= 8);
     assert.strictEqual(lineas, 1);
     assert.strictEqual(corte.length, 1);
     const m = (await pool.query('SELECT id, role FROM project_members WHERE project_id = $1', p)).rows;
     ctx.qa = m.find((x) => x.role === 'QA').id;
     ctx.tecnico = m.find((x) => x.role === 'TECNICO').id;
-    return `Respondió 201; en la BD quedaron 1 proyecto, ${miembros} miembros, ${actividades} actividades del plan, ${lineas} línea base y el corte "${corte[0].cutoff_name}" en ${corte[0].health_status}.`;
+    ctx.developer = m.find((x) => x.role === 'DEVELOPER').id;
+    return `Respondió 201; en la BD quedaron 1 proyecto, ${miembros} miembros (incluyendo 2 developers), ${actividades} actividades del plan, ${lineas} línea base y el corte "${corte[0].cutoff_name}" en ${corte[0].health_status}.`;
   });
 
   await prueba('INT-004', async () => {
@@ -315,12 +318,51 @@ async function main() {
     assert.strictEqual(r.body.defectos.length, 6);
     assert.strictEqual(r.body.densidadDefectos, 6);
     assert.strictEqual(r.body.nivelSemaforo, 'ROJO_CRITICO');
-    assert.strictEqual(r.body.miembros.length, 3);
+    assert.strictEqual(r.body.miembros.length, 5);
     return `Respondió 200 con ${r.body.miembros.length} miembros, ${r.body.defectos.length} defectos (${r.body.defectos.map((d) => d.folio).join(', ')}), densidad 6 y ROJO_CRITICO.`;
   });
 
-  // ------------------------------------------------------------------ CU-01 reiniciar (cascada sobre CU-02 y CU-03)
+  // ------------------------------------------------------------------ Edición y actualización de defectos
   await prueba('INT-024', async () => {
+    const primerDefecto = (await http('GET', urlDefectos())).body.defectos.find((d) => d.folio === 'DEF-001');
+    const r = await http('PUT', `${urlDefectos()}/${primerDefecto.id}`, {
+      descripcionDetallada: 'DEF-001 editado con nueva información y reasignado',
+      severidad: 'CRITICA',
+      prioridad: 'INMEDIATA',
+      faseDeteccion: 'INTEGRACION_Y_PRUEBAS',
+      faseOrigen: 'CONSTRUCCION_SOFTWARE',
+      asignadoAId: ctx.developer,
+      estado: 'EN_RESOLUCION',
+    });
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(r.body.actualizacionExitosa, true);
+    assert.strictEqual(r.body.defecto.severidad, 'CRITICA');
+    assert.strictEqual(r.body.defecto.asignadoNombre, 'Dev Uno');
+    assert.strictEqual(r.body.defecto.estado, 'EN_RESOLUCION');
+    return `Respondió 200; DEF-001 editado exitosamente y reasignado a "Dev Uno" en estado EN_RESOLUCION.`;
+  });
+
+  await prueba('INT-025', async () => {
+    const primerDefecto = (await http('GET', urlDefectos())).body.defectos.find((d) => d.folio === 'DEF-001');
+    const r = await http('PATCH', `${urlDefectos()}/${primerDefecto.id}/estado`, {
+      estado: 'DESCARTADO',
+      notasResolucion: 'Falso positivo confirmado en pruebas de regresión',
+    });
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(r.body.actualizacionExitosa, true);
+    assert.strictEqual(r.body.defecto.estado, 'DESCARTADO');
+    // Al descartarse, baja de 6 a 5 defectos activos y la densidad pasa de 6 a 5 (AMARILLO_ADVERTENCIA)
+    assert.strictEqual(r.body.totalDefectos, 5);
+    assert.strictEqual(r.body.densidadDefectosActualizada, 5);
+    const fila = (await pool.query('SELECT status, resolution_notes, resolved_date FROM defects WHERE id = $1', [primerDefecto.id])).rows[0];
+    assert.strictEqual(fila.status, 'DESCARTADO');
+    assert.strictEqual(fila.resolution_notes, 'Falso positivo confirmado en pruebas de regresión');
+    assert.ok(fila.resolved_date);
+    return `Respondió 200; DEF-001 actualizado a DESCARTADO; densidad reducida de 6 a 5 (AMARILLO_ADVERTENCIA) y resolved_date registrado en BD.`;
+  });
+
+  // ------------------------------------------------------------------ CU-01 reiniciar (cascada sobre CU-02 y CU-03)
+  await prueba('INT-026', async () => {
     const r = await http('DELETE', `/proyectos/${ctx.proyectoId}`);
     assert.strictEqual(r.status, 200);
     const tablas = ['monitored_projects', 'project_members', 'sqa_activities', 'evaluation_cutoffs', 'metric_configurations', 'metric_thresholds', 'defects', 'quality_metrics'];

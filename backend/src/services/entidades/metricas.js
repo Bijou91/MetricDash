@@ -27,6 +27,7 @@ class MetricaCalidad {
 
   // Los umbrales son inclusivos del lado "mejor": alcanzar la advertencia aún es VERDE.
   evaluarEstado(valor) {
+    if (typeof valor !== 'number' || !Number.isFinite(valor)) return null;
     const mejorOIgual = (v, u) => (this.sentido === SentidoMetrica.MAYOR_ES_MEJOR ? v >= u : v <= u);
     if (mejorOIgual(valor, this.umbralAdvertencia)) return EstadoSemaforo.VERDE;
     if (mejorOIgual(valor, this.umbralCritico)) return EstadoSemaforo.AMARILLO;

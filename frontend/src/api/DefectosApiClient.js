@@ -18,3 +18,12 @@ export const registrarDefecto = (proyectoId, dto) =>
 
 export const descartarRegistro = (proyectoId) =>
   request(`/proyectos/${proyectoId}/defectos/descartar`, { method: 'POST' });
+
+export const actualizarDefecto = (proyectoId, defectoId, dto) =>
+  request(`/proyectos/${proyectoId}/defectos/${defectoId}`, { method: 'PUT', body: JSON.stringify(dto) });
+
+export const actualizarEstadoDefecto = (proyectoId, defectoId, estado, notasResolucion = null) =>
+  request(`/proyectos/${proyectoId}/defectos/${defectoId}/estado`, {
+    method: 'PATCH',
+    body: JSON.stringify({ estado, notasResolucion }),
+  });

@@ -13,6 +13,7 @@ const ROLES_DISPONIBLES = [
   { valor: 'QA', etiqueta: 'Responsable de Calidad (QA)' },
   { valor: 'TECNICO', etiqueta: 'Líder Técnico' },
   { valor: 'GESTION_PROYECTO', etiqueta: 'Gestión de Proyecto' },
+  { valor: 'DEVELOPER', etiqueta: 'Desarrollador (Developer)' },
 ];
 
 export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }) {
@@ -90,9 +91,17 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
 
   // Manejo dinámico de integrantes
   function handleAgregarIntegrante() {
+    const rolesAsignados = new Set(integrantes.map((i) => i.role));
+    let rolSugerido = 'QA';
+    if (rolesAsignados.has('QA')) {
+      if (!rolesAsignados.has('TECNICO')) rolSugerido = 'TECNICO';
+      else if (!rolesAsignados.has('GESTION_PROYECTO')) rolSugerido = 'GESTION_PROYECTO';
+      else rolSugerido = 'DEVELOPER';
+    }
+
     setIntegrantes((prev) => [
       ...prev,
-      { id: Date.now() + Math.random(), role: 'QA', memberName: '', email: '' },
+      { id: Date.now() + Math.random(), role: rolSugerido, memberName: '', email: '' },
     ]);
   }
 
@@ -267,14 +276,22 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
 
   const errorDe = (campo) => errores.filter((e) => e.campo === campo);
 
-  // Verificación de los 3 roles obligatorios en tiempo real
+  // Verificación de los 3 roles obligatorios en tiempo real y desarrolladores
   const integrantesConNombre = integrantes.filter(
     (i) => i.memberName && i.memberName.trim().length > 0
   );
-  const rolesPresentes = new Set(integrantesConNombre.map((i) => i.role));
-  const tieneQA = rolesPresentes.has('QA');
-  const tieneTecnico = rolesPresentes.has('TECNICO');
-  const tieneGestion = rolesPresentes.has('GESTION_PROYECTO');
+  const conteoRoles = { QA: 0, TECNICO: 0, GESTION_PROYECTO: 0, DEVELOPER: 0 };
+  for (const i of integrantesConNombre) {
+    conteoRoles[i.role] = (conteoRoles[i.role] || 0) + 1;
+  }
+  const tieneQA = conteoRoles.QA === 1;
+  const tieneTecnico = conteoRoles.TECNICO === 1;
+  const tieneGestion = conteoRoles.GESTION_PROYECTO === 1;
+  const countDevelopers = conteoRoles.DEVELOPER || 0;
+
+  const repetidoQA = conteoRoles.QA > 1;
+  const repetidoTecnico = conteoRoles.TECNICO > 1;
+  const repetidoGestion = conteoRoles.GESTION_PROYECTO > 1;
 
   if (cargando) {
     return (
@@ -603,7 +620,7 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
                   2. Asignación de Roles del Equipo de Trabajo
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Es mandatorio asignar al menos un integrante con nombre a cada rol obligatorio: <strong>QA</strong>, <strong>Líder Técnico</strong> y <strong>Gestión de Proyecto</strong>.
+                  Es mandatorio asignar un único integrante con nombre a cada rol obligatorio: <strong>QA</strong>, <strong>Líder Técnico</strong> y <strong>Gestión de Proyecto</strong>. Puede agregar integrantes adicionales con el rol de <strong>Desarrollador</strong> (sin límite).
                 </p>
               </div>
 
@@ -631,32 +648,41 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
             {/* Checklist visual de roles en tiempo real */}
             <div className="mb-4 flex flex-wrap gap-2">
               <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition ${
-                tieneQA
-                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                  : 'bg-red-100 text-red-800 border border-red-300 animate-pulse'
+                repetidoQA
+                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                  : tieneQA
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                    : 'bg-red-100 text-red-800 border border-red-300 animate-pulse'
               }`}>
-                {tieneQA ? '✔ QA Asignado' : '✖ Falta asignar: QA'}
+                {repetidoQA ? '⚠ QA Duplicado (máx. 1)' : tieneQA ? '✔ QA Asignado' : '✖ Falta asignar: QA'}
               </span>
               <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition ${
-                tieneTecnico
-                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                  : 'bg-red-100 text-red-800 border border-red-300 animate-pulse'
+                repetidoTecnico
+                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                  : tieneTecnico
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                    : 'bg-red-100 text-red-800 border border-red-300 animate-pulse'
               }`}>
-                {tieneTecnico ? '✔ Líder Técnico Asignado' : '✖ Falta asignar: Líder Técnico'}
+                {repetidoTecnico ? '⚠ Líder Técnico Duplicado (máx. 1)' : tieneTecnico ? '✔ Líder Técnico Asignado' : '✖ Falta asignar: Líder Técnico'}
               </span>
               <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition ${
-                tieneGestion
-                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                  : 'bg-red-100 text-red-800 border border-red-300 animate-pulse'
+                repetidoGestion
+                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                  : tieneGestion
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                    : 'bg-red-100 text-red-800 border border-red-300 animate-pulse'
               }`}>
-                {tieneGestion ? '✔ Gestión de Proyecto Asignado' : '✖ Falta asignar: Gestión de Proyecto'}
+                {repetidoGestion ? '⚠ Gestión Duplicado (máx. 1)' : tieneGestion ? '✔ Gestión de Proyecto Asignado' : '✖ Falta asignar: Gestión de Proyecto'}
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-300">
+                💻 {countDevelopers > 0 ? `${countDevelopers} Desarrollador(es) asignado(s)` : 'Desarrolladores (Opcional / Ilimitado)'}
               </span>
             </div>
 
             {/* Alertas de error de roles */}
             {(errorDe('rolesEquipo').length > 0 || errorDe('rol_QA').length > 0 || errorDe('rol_TECNICO').length > 0 || errorDe('rol_GESTION_PROYECTO').length > 0) && (
               <div className="mb-4 rounded-lg bg-red-50 p-3 text-xs text-red-800 border border-red-200">
-                <strong>Roles faltantes requeridos por el estándar:</strong>
+                <strong>Validación de roles del equipo:</strong>
                 <ul className="mt-1 list-disc pl-5 space-y-1">
                   {errorDe('rolesEquipo').map((e, i) => <li key={`re-${i}`}>{e.mensaje}</li>)}
                   {errorDe('rol_QA').map((e, i) => <li key={`qa-${i}`}>{e.mensaje}</li>)}
@@ -671,7 +697,7 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
               <div className="rounded-lg border border-dashed border-red-300 p-8 text-center bg-red-50/30">
                 <p className="text-sm font-bold text-red-700">No has agregado integrantes al equipo todavía.</p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Haz clic en <strong>"+ Agregar Integrante"</strong> para completar los 3 roles obligatorios.
+                  Haz clic en <strong>"+ Agregar Integrante"</strong> para completar los 3 roles obligatorios y los desarrolladores necesarios.
                 </p>
               </div>
             ) : (
@@ -686,15 +712,20 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
                       <span className="text-xs font-bold text-slate-400 w-6 text-center">#{idx + 1}</span>
 
                       {/* Selector de Rol */}
-                      <div className="w-full sm:w-48">
+                      <div className="w-full sm:w-56">
                         <select
                           value={item.role}
                           onChange={(e) => handleActualizarIntegrante(item.id, 'role', e.target.value)}
                           className="w-full rounded-md border border-slate-300 bg-white p-2 text-xs font-semibold shadow-xs"
                         >
-                          {ROLES_DISPONIBLES.map((r) => (
-                            <option key={r.valor} value={r.valor}>{r.etiqueta}</option>
-                          ))}
+                          {ROLES_DISPONIBLES.map((r) => {
+                            const ocupadoPorOtro = r.valor !== 'DEVELOPER' && integrantes.some((otro) => otro.id !== item.id && otro.role === r.valor);
+                            return (
+                              <option key={r.valor} value={r.valor} disabled={ocupadoPorOtro}>
+                                {r.etiqueta}{ocupadoPorOtro ? ' (Ya asignado)' : ''}
+                              </option>
+                            );
+                          })}
                         </select>
                       </div>
 

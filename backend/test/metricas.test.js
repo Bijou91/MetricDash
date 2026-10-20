@@ -169,3 +169,165 @@ test('CU-02 FN-04: generarVistaPrevia genera exactamente los 12 rangos para el s
     assert.ok(estados.has(EstadoSemaforo.ROJO));
   }
 });
+
+// =========================================================================
+// 5. Casos Límite y de Borde (Edge Cases)
+// =========================================================================
+test('CU-02 CASO LÍMITE: ValidadorUmbrales en cotas exactas 0%, 100% y 0 def/KLOC', () => {
+  // Cotas extremas válidas: 0% como umbral crítico en porcentaje, 100% como meta
+  const limitesPorcentaje = {
+    tipo: 'COBERTURA_PRUEBAS',
+    meta: 100.0,
+    umbralAdvertencia: 50.0,
+    umbralCritico: 0.0,
+  };
+  assert.deepStrictEqual(v.validarRango(limitesPorcentaje), []);
+  assert.deepStrictEqual(v.validarCoherencia(limitesPorcentaje), []);
+
+  // Cota extrema válida: 0.0 defectos/KLOC como meta ideal
+  const limitesDensidad = {
+    tipo: 'DENSIDAD_DEFECTOS',
+    meta: 0.0,
+    umbralAdvertencia: 2.0,
+    umbralCritico: 4.0,
+  };
+  assert.deepStrictEqual(v.validarRango(limitesDensidad), []);
+  assert.deepStrictEqual(v.validarCoherencia(limitesDensidad), []);
+
+  // Densidad alta (no restringida por 100%)
+  const densidadAlta = {
+    tipo: 'DENSIDAD_DEFECTOS',
+    meta: 5.0,
+    umbralAdvertencia: 25.0,
+    umbralCritico: 80.0,
+  };
+  assert.deepStrictEqual(v.validarRango(densidadAlta), []);
+  assert.deepStrictEqual(v.validarCoherencia(densidadAlta), []);
+});
+
+test('CU-02 CASO LÍMITE: ValidadorUmbrales rechaza micro-desviaciones fuera de frontera (-0.001 y 100.001)', () => {
+  // Micro-desviación inferior en porcentaje
+  const microBajoCero = { tipo: 'COBERTURA_PRUEBAS', meta: 80, umbralAdvertencia: 70, umbralCritico: -0.001 };
+  const errBajoCero = v.validarRango(microBajoCero);
+  assert.strictEqual(errBajoCero.length, 1);
+  assert.strictEqual(errBajoCero[0].campo, 'umbralCritico');
+  assert.ok(errBajoCero[0].mensaje.includes('entre 0 y 100'));
+
+  // Micro-desviación superior en porcentaje
+  const microSobreCien = { tipo: 'TASA_EXITO_PRUEBAS', meta: 100.001, umbralAdvertencia: 90, umbralCritico: 80 };
+  const errSobreCien = v.validarRango(microSobreCien);
+  assert.strictEqual(errSobreCien.length, 1);
+  assert.strictEqual(errSobreCien[0].campo, 'meta');
+  assert.ok(errSobreCien[0].mensaje.includes('entre 0 y 100'));
+
+  // Micro-desviación inferior en densidad de defectos
+  const microDensidadNeg = { tipo: 'DENSIDAD_DEFECTOS', meta: -0.001, umbralAdvertencia: 2.0, umbralCritico: 4.0 };
+  const errDensidadNeg = v.validarRango(microDensidadNeg);
+  assert.strictEqual(errDensidadNeg.length, 1);
+  assert.strictEqual(errDensidadNeg[0].campo, 'meta');
+  assert.ok(errDensidadNeg[0].mensaje.includes('mayor o igual a 0'));
+});
+
+test('CU-02 CASO LÍMITE: ValidadorUmbrales coherencia en igualdad de frontera y micro-separación', () => {
+  // Igualdad en frontera meta === advertencia
+  const metaIgualAdv = { tipo: 'COBERTURA_PRUEBAS', meta: 75.0, umbralAdvertencia: 75.0, umbralCritico: 60.0 };
+  const errMetaAdv = v.validarCoherencia(metaIgualAdv);
+  assert.ok(errMetaAdv.some((e) => e.campo === 'umbralAdvertencia'));
+
+  // Igualdad en frontera advertencia === crítico
+  const advIgualCrit = { tipo: 'CUMPLIMIENTO_SQA', meta: 90.0, umbralAdvertencia: 70.0, umbralCritico: 70.0 };
+  const errAdvCrit = v.validarCoherencia(advIgualCrit);
+  assert.ok(errAdvCrit.some((e) => e.campo === 'umbralCritico'));
+
+  // Igualdad total meta === advertencia === crítico
+  const todosIguales = { tipo: 'COBERTURA_PRUEBAS', meta: 70.0, umbralAdvertencia: 70.0, umbralCritico: 70.0 };
+  const errTodos = v.validarCoherencia(todosIguales);
+  assert.strictEqual(errTodos.length, 2);
+
+  // Micro-separación válida (MAYOR_ES_MEJOR con diferencia mínima 0.001)
+  const microSeparacionMayor = {
+    tipo: 'COBERTURA_PRUEBAS',
+    meta: 70.002,
+    umbralAdvertencia: 70.001,
+    umbralCritico: 70.000,
+  };
+  assert.deepStrictEqual(v.validarCoherencia(microSeparacionMayor), []);
+
+  // Micro-separación válida (MENOR_ES_MEJOR con diferencia mínima 0.001)
+  const microSeparacionMenor = {
+    tipo: 'DENSIDAD_DEFECTOS',
+    meta: 1.000,
+    umbralAdvertencia: 1.001,
+    umbralCritico: 1.002,
+  };
+  assert.deepStrictEqual(v.validarCoherencia(microSeparacionMenor), []);
+});
+
+test('CU-02 CASO LÍMITE: ValidadorUmbrales maneja el valor 0 como numérico válido y rechaza no-finitos', () => {
+  // El valor 0 es falsy en JS, pero debe ser aceptado como número válido
+  const conCeros = [
+    { tipo: 'DENSIDAD_DEFECTOS', meta: 0, umbralAdvertencia: 2, umbralCritico: 4 },
+    { tipo: 'COBERTURA_PRUEBAS', meta: 80, umbralAdvertencia: 50, umbralCritico: 0 },
+    { tipo: 'TASA_EXITO_PRUEBAS', meta: 90, umbralAdvertencia: 80, umbralCritico: 70 },
+    { tipo: 'CUMPLIMIENTO_SQA', meta: 85, umbralAdvertencia: 75, umbralCritico: 60 },
+  ];
+  assert.deepStrictEqual(v.validarCompletitud(conCeros), []);
+
+  // Valores no finitos: Infinity, -Infinity
+  const conInfinito = [
+    { tipo: 'DENSIDAD_DEFECTOS', meta: 1, umbralAdvertencia: 3, umbralCritico: Infinity },
+    ...validas.slice(1),
+  ];
+  const errInf = v.validarCompletitud(conInfinito);
+  assert.ok(errInf.some((e) => e.campo === 'umbralCritico'));
+
+  const conMenosInf = [
+    { tipo: 'COBERTURA_PRUEBAS', meta: -Infinity, umbralAdvertencia: 70, umbralCritico: 50 },
+    ...validas.slice(1),
+  ];
+  const errMenosInf = v.validarCompletitud(conMenosInf);
+  assert.ok(errMenosInf.some((e) => e.campo === 'meta'));
+});
+
+test('CU-02 CASO LÍMITE: MetricaCalidad.evaluarEstado transiciones de frontera exacta (micro-épsilon y límites absolutos)', () => {
+  // MAYOR_ES_MEJOR: adv=70.0, crit=50.0
+  const metricaCob = new MetricaCalidad(validas[1]);
+
+  // Frontera exacta de advertencia (70.0)
+  assert.strictEqual(metricaCob.evaluarEstado(70.0), EstadoSemaforo.VERDE);
+  assert.strictEqual(metricaCob.evaluarEstado(70.001), EstadoSemaforo.VERDE);
+  assert.strictEqual(metricaCob.evaluarEstado(69.999), EstadoSemaforo.AMARILLO);
+
+  // Frontera exacta de crítico (50.0)
+  assert.strictEqual(metricaCob.evaluarEstado(50.0), EstadoSemaforo.AMARILLO);
+  assert.strictEqual(metricaCob.evaluarEstado(50.001), EstadoSemaforo.AMARILLO);
+  assert.strictEqual(metricaCob.evaluarEstado(49.999), EstadoSemaforo.ROJO);
+
+  // Límites absolutos
+  assert.strictEqual(metricaCob.evaluarEstado(100.0), EstadoSemaforo.VERDE);
+  assert.strictEqual(metricaCob.evaluarEstado(0.0), EstadoSemaforo.ROJO);
+
+  // MENOR_ES_MEJOR: adv=3.0, crit=5.0
+  const metricaDens = new MetricaCalidad(validas[0]);
+
+  // Límite óptimo absoluto
+  assert.strictEqual(metricaDens.evaluarEstado(0.0), EstadoSemaforo.VERDE);
+
+  // Frontera exacta de advertencia (3.0)
+  assert.strictEqual(metricaDens.evaluarEstado(3.0), EstadoSemaforo.VERDE);
+  assert.strictEqual(metricaDens.evaluarEstado(2.999), EstadoSemaforo.VERDE);
+  assert.strictEqual(metricaDens.evaluarEstado(3.001), EstadoSemaforo.AMARILLO);
+
+  // Frontera exacta de crítico (5.0)
+  assert.strictEqual(metricaDens.evaluarEstado(5.0), EstadoSemaforo.AMARILLO);
+  assert.strictEqual(metricaDens.evaluarEstado(4.999), EstadoSemaforo.AMARILLO);
+  assert.strictEqual(metricaDens.evaluarEstado(5.001), EstadoSemaforo.ROJO);
+
+  // Valores extremos y no válidos
+  assert.strictEqual(metricaDens.evaluarEstado(999.0), EstadoSemaforo.ROJO);
+  assert.strictEqual(metricaDens.evaluarEstado(null), null);
+  assert.strictEqual(metricaDens.evaluarEstado(undefined), null);
+  assert.strictEqual(metricaDens.evaluarEstado('3.0'), null);
+  assert.strictEqual(metricaDens.evaluarEstado(NaN), null);
+});
+

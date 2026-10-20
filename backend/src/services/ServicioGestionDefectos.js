@@ -1,5 +1,5 @@
 const defectoRepo = require('../data/DefectoRepository');
-const { Defecto, SeveridadDefecto, PrioridadDefecto } = require('./entidades/defecto');
+const { Defecto, SeveridadDefecto, PrioridadDefecto, EstadoDefecto } = require('./entidades/defecto');
 const { FaseProyecto } = require('./entidades/proyecto');
 
 // FA-03.01: a partir de este porcentaje de palabras en común (misma fase de origen) se considera posible duplicado.
@@ -73,9 +73,37 @@ async function crearYAsignarDefecto(dto, responsable, corte, tx) {
   return defectoRepo.guardar(defecto, corte, tx);
 }
 
+function validarCamposEdicion(dto = {}, miembros = []) {
+  const idsMiembros = new Set(miembros.map((m) => m.id));
+  const errores = [];
+  if (dto.severidad && !Object.values(SeveridadDefecto).includes(dto.severidad)) {
+    errores.push('severidad');
+  }
+  if (dto.prioridad && !Object.values(PrioridadDefecto).includes(dto.prioridad)) {
+    errores.push('prioridad');
+  }
+  if (dto.faseDeteccion && !Object.values(FaseProyecto).includes(dto.faseDeteccion)) {
+    errores.push('faseDeteccion');
+  }
+  if (dto.faseOrigen && !Object.values(FaseProyecto).includes(dto.faseOrigen)) {
+    errores.push('faseOrigen');
+  }
+  if (dto.asignadoAId && !idsMiembros.has(dto.asignadoAId)) {
+    errores.push('asignadoAId');
+  }
+  if (dto.estado && !Object.values(EstadoDefecto).includes(dto.estado)) {
+    errores.push('estado');
+  }
+  if (dto.descripcionDetallada !== undefined && (typeof dto.descripcionDetallada !== 'string' || !dto.descripcionDetallada.trim())) {
+    errores.push('descripcionDetallada');
+  }
+  return errores;
+}
+
 module.exports = {
   UMBRAL_SIMILITUD_DUPLICADO,
   validarCamposObligatorios,
+  validarCamposEdicion,
   similitud,
   buscarPosiblesDuplicados,
   crearYAsignarDefecto,

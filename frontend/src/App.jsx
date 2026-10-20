@@ -107,7 +107,7 @@ export default function App() {
         {tabActiva === 'cu03' && (
           proyectoActivo
             ? <VistaTableroDefecto proyectoId={proyectoActivo.id} />
-            : <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-800">Registre primero el proyecto del periodo (CU-01).</p>
+            : <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-800">Registre primero el proyecto del periodo.</p>
         )}
       </main>
     </div>

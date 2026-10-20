@@ -113,6 +113,66 @@ test('CU-02 FA-02.01: guardarVersionada con umbrales cruzados no abre transacci�
   assert.strictEqual(ejecutar.mock.callCount(), 0);
 });
 
+test('CU-02 CASO LÍMITE: ConfiguracionMetricasService.validar procesa DTOs anómalos (null, vacío, no-array)', async () => {
+  mock.method(proyectoRepo, 'obtenerActivo', async () => ({ id: PROYECTO_ID }));
+
+  // DTO null
+  const resNull = await metricasService.validar(PROYECTO_ID, null);
+  assert.strictEqual(resNull.valido, false);
+  assert.strictEqual(resNull.incompleto, true);
+
+  // DTO vacío {}
+  const resVacio = await metricasService.validar(PROYECTO_ID, {});
+  assert.strictEqual(resVacio.valido, false);
+  assert.strictEqual(resVacio.incompleto, true);
+
+  // Lista de métricas vacía []
+  const resArrayVacio = await metricasService.validar(PROYECTO_ID, { metricas: [] });
+  assert.strictEqual(resArrayVacio.valido, false);
+  assert.strictEqual(resArrayVacio.incompleto, true);
+  assert.strictEqual(resArrayVacio.errores.length, 4);
+
+  // Metricas no array
+  const resNoArray = await metricasService.validar(PROYECTO_ID, { metricas: 'texto-invalido' });
+  assert.strictEqual(resNoArray.valido, false);
+  assert.strictEqual(resNoArray.incompleto, true);
+});
+
+test('CU-02 CASO LÍMITE: ConfiguracionMetricasService.guardarVersionada calcula versión inicial v1 cuando ultimaVersion es 0 o null', async () => {
+  mock.method(proyectoRepo, 'obtenerActivo', async () => ({ id: PROYECTO_ID }));
+  txFalsa();
+  mock.method(configRepo, 'desactivarVigente', async () => {});
+  mock.method(configRepo, 'insertarVersion', async () => {});
+
+  // Caso 1: ultimaVersion es 0
+  mock.method(configRepo, 'obtenerUltimaVersion', async () => 0);
+  const cfg1 = await metricasService.guardarVersionada(PROYECTO_ID, { metricas: metricasValidas }, 'user-1');
+  assert.strictEqual(cfg1.version, 1);
+
+  // Caso 2: ultimaVersion es null
+  mock.method(configRepo, 'obtenerUltimaVersion', async () => null);
+  const cfg2 = await metricasService.guardarVersionada(PROYECTO_ID, { metricas: metricasValidas }, 'user-1');
+  assert.strictEqual(cfg2.version, 1);
+});
+
+test('CU-02 CASO LÍMITE: ConfiguracionMetricasService.guardarVersionada aborta fail-fast ante micro-violaciones de frontera sin abrir transacción', async () => {
+  mock.method(proyectoRepo, 'obtenerActivo', async () => ({ id: PROYECTO_ID }));
+  const ejecutar = mock.method(transacciones, 'ejecutar', async () => {});
+
+  // Micro-desviación de frontera: 100.001%
+  const fueraFrontera = [
+    { ...metricasValidas[0] },
+    { ...metricasValidas[1], meta: 100.001 },
+    ...metricasValidas.slice(2),
+  ];
+
+  await assert.rejects(
+    metricasService.guardarVersionada(PROYECTO_ID, { metricas: fueraFrontera }, null),
+    (err) => err.resultado.valido === false && err.resultado.errores.some((e) => e.campo === 'meta'),
+  );
+  assert.strictEqual(ejecutar.mock.callCount(), 0);
+});
+
 // ---------------------------------------------------------------- CU-02 controlador
 
 const metricasRouter = require('../src/controllers/MetricasController');

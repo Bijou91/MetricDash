@@ -4,6 +4,14 @@ import TableroDefectosWidget, { ETIQUETAS_FASE } from '../widgets/TableroDefecto
 
 const SEVERIDADES = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'];
 const PRIORIDADES = ['BAJA', 'MEDIA', 'ALTA', 'INMEDIATA'];
+const ESTADOS = ['REGISTRADO', 'ASIGNADO', 'EN_RESOLUCION', 'CERRADO', 'DESCARTADO'];
+const ETIQUETAS_ESTADO = {
+  REGISTRADO: 'Registrado',
+  ASIGNADO: 'Asignado',
+  EN_RESOLUCION: 'En resolución',
+  CERRADO: 'Cerrado',
+  DESCARTADO: 'Descartado',
+};
 
 const formularioVacio = {
   reportadoPorId: '', asignadoAId: '', severidad: '', prioridad: '',
@@ -19,6 +27,11 @@ export default function VistaTableroDefecto({ proyectoId }) {
   const [alerta, setAlerta] = useState(null);
   const [mensaje, setMensaje] = useState(null);
   const [ocupado, setOcupado] = useState(false);
+
+  // Estado para la edición de defectos
+  const [defectoEnEdicion, setDefectoEnEdicion] = useState(null);
+  const [dtoEdicion, setDtoEdicion] = useState(null);
+  const [camposFaltantesEdicion, setCamposFaltantesEdicion] = useState([]);
 
   async function cargarTablero() {
     try {
@@ -108,6 +121,85 @@ export default function VistaTableroDefecto({ proyectoId }) {
     setMensaje({ tipo: 'error', texto: `${texto} Intente registrar el defecto nuevamente.` });
   }
 
+  // Funciones para edición de defectos
+  function iniciarEdicion(defecto) {
+    setDefectoEnEdicion(defecto);
+    setDtoEdicion({
+      descripcionDetallada: defecto.descripcionDetallada ?? '',
+      severidad: defecto.severidad ?? 'BAJA',
+      prioridad: defecto.prioridad ?? 'BAJA',
+      faseDeteccion: defecto.faseDeteccion ?? 'CONSTRUCCION_SOFTWARE',
+      faseOrigen: defecto.faseOrigen ?? 'ANALISIS_REQUERIMIENTOS',
+      asignadoAId: defecto.asignadoAId ?? '',
+      estado: defecto.estado ?? 'REGISTRADO',
+      notasResolucion: defecto.notasResolucion ?? '',
+    });
+    setCamposFaltantesEdicion([]);
+    setMensaje(null);
+  }
+
+  function cancelarEdicion() {
+    setDefectoEnEdicion(null);
+    setDtoEdicion(null);
+    setCamposFaltantesEdicion([]);
+  }
+
+  function capturarDatosEdicion(campo, valor) {
+    setDtoEdicion((d) => ({ ...d, [campo]: valor }));
+    setCamposFaltantesEdicion((c) => c.filter((x) => x !== campo));
+  }
+
+  async function guardarEdicion(e) {
+    if (e) e.preventDefault();
+    if (!dtoEdicion) return;
+
+    const faltantes = [];
+    if (!String(dtoEdicion.descripcionDetallada).trim()) faltantes.push('descripcionDetallada');
+    if (!String(dtoEdicion.asignadoAId).trim()) faltantes.push('asignadoAId');
+    if (faltantes.length) {
+      setCamposFaltantesEdicion(faltantes);
+      setMensaje({ tipo: 'error', texto: 'Complete todos los campos obligatorios para guardar la edición.' });
+      return;
+    }
+
+    setOcupado(true);
+    setMensaje(null);
+    try {
+      const r = await api.actualizarDefecto(proyectoId, defectoEnEdicion.id, dtoEdicion);
+      if (r.status === 200) {
+        setMensaje({ tipo: 'ok', texto: `Defecto ${defectoEnEdicion.folio} actualizado correctamente.` });
+        if (r.data?.alertaEmitida) setAlerta(r.data.alertaEmitida);
+        cancelarEdicion();
+        await cargarTablero();
+      } else {
+        setMensaje({ tipo: 'error', texto: r.data?.mensaje || 'Error al actualizar el defecto.' });
+      }
+    } catch (err) {
+      setMensaje({ tipo: 'error', texto: err.message });
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  async function cambiarEstadoDirecto(defectoId, nuevoEstado) {
+    setOcupado(true);
+    setMensaje(null);
+    try {
+      const r = await api.actualizarEstadoDefecto(proyectoId, defectoId, nuevoEstado);
+      if (r.status === 200) {
+        setMensaje({ tipo: 'ok', texto: `Estado del defecto actualizado a "${ETIQUETAS_ESTADO[nuevoEstado] ?? nuevoEstado}".` });
+        if (r.data?.alertaEmitida) setAlerta(r.data.alertaEmitida);
+        await cargarTablero();
+      } else {
+        setMensaje({ tipo: 'error', texto: r.data?.mensaje || 'Error al actualizar el estado.' });
+      }
+    } catch (err) {
+      setMensaje({ tipo: 'error', texto: err.message });
+    } finally {
+      setOcupado(false);
+    }
+  }
+
   const falta = (campo) => camposFaltantes.includes(campo);
   const claseCampo = (campo) => `w-full rounded border p-1.5 ${falta(campo) ? 'border-red-600 bg-red-50' : 'border-slate-300 bg-white'}`;
   const propsCampo = (campo, etiqueta) => ({
@@ -140,7 +232,7 @@ export default function VistaTableroDefecto({ proyectoId }) {
 
       {tablero && !tablero.umbralesConfigurados && (
         <p role="alert" className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-amber-800">
-          Primero configure las métricas de calidad y sus umbrales (CU-02) para poder registrar defectos.
+          Primero configure las métricas de calidad y sus umbrales para poder registrar defectos.
         </p>
       )}
 
@@ -218,7 +310,138 @@ export default function VistaTableroDefecto({ proyectoId }) {
         </div>
       )}
 
-      {tablero && <TableroDefectosWidget tablero={tablero} />}
+      {/* Modal de Edición de Defecto */}
+      {defectoEnEdicion && dtoEdicion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="relative w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl border border-slate-200 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-sm font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                  {defectoEnEdicion.folio}
+                </span>
+                <h3 className="text-lg font-bold text-slate-800">Editar Defecto</h3>
+              </div>
+              <button
+                type="button"
+                onClick={cancelarEdicion}
+                className="text-slate-400 hover:text-slate-600 text-xl font-bold p-1 leading-none cursor-pointer"
+                aria-label="Cerrar modal"
+              >
+                ×
+              </button>
+            </div>
+
+            <form className="mt-4 grid gap-3 sm:grid-cols-2" onSubmit={guardarEdicion}>
+              <label className="text-sm">Asignar a
+                <select
+                  value={dtoEdicion.asignadoAId}
+                  onChange={(e) => capturarDatosEdicion('asignadoAId', e.target.value)}
+                  className={`w-full rounded border p-1.5 ${camposFaltantesEdicion.includes('asignadoAId') ? 'border-red-600 bg-red-50' : 'border-slate-300 bg-white'}`}
+                >
+                  {opcionesMiembros}
+                </select>
+              </label>
+
+              <label className="text-sm">Estado
+                <select
+                  value={dtoEdicion.estado}
+                  onChange={(e) => capturarDatosEdicion('estado', e.target.value)}
+                  className="w-full rounded border border-slate-300 bg-white p-1.5 font-medium"
+                >
+                  {ESTADOS.map((est) => (
+                    <option key={est} value={est}>{ETIQUETAS_ESTADO[est] ?? est}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="text-sm">Severidad
+                <select
+                  value={dtoEdicion.severidad}
+                  onChange={(e) => capturarDatosEdicion('severidad', e.target.value)}
+                  className="w-full rounded border border-slate-300 bg-white p-1.5"
+                >
+                  {opciones(SEVERIDADES)}
+                </select>
+              </label>
+
+              <label className="text-sm">Prioridad
+                <select
+                  value={dtoEdicion.prioridad}
+                  onChange={(e) => capturarDatosEdicion('prioridad', e.target.value)}
+                  className="w-full rounded border border-slate-300 bg-white p-1.5"
+                >
+                  {opciones(PRIORIDADES)}
+                </select>
+              </label>
+
+              <label className="text-sm">Fase de detección
+                <select
+                  value={dtoEdicion.faseDeteccion}
+                  onChange={(e) => capturarDatosEdicion('faseDeteccion', e.target.value)}
+                  className="w-full rounded border border-slate-300 bg-white p-1.5"
+                >
+                  {opciones(fases, ETIQUETAS_FASE)}
+                </select>
+              </label>
+
+              <label className="text-sm">Fase de origen
+                <select
+                  value={dtoEdicion.faseOrigen}
+                  onChange={(e) => capturarDatosEdicion('faseOrigen', e.target.value)}
+                  className="w-full rounded border border-slate-300 bg-white p-1.5"
+                >
+                  {opciones(fases, ETIQUETAS_FASE)}
+                </select>
+              </label>
+
+              <label className="text-sm sm:col-span-2">Descripción detallada
+                <textarea
+                  rows={3}
+                  value={dtoEdicion.descripcionDetallada}
+                  onChange={(e) => capturarDatosEdicion('descripcionDetallada', e.target.value)}
+                  className={`w-full rounded border p-1.5 ${camposFaltantesEdicion.includes('descripcionDetallada') ? 'border-red-600 bg-red-50' : 'border-slate-300 bg-white'}`}
+                />
+              </label>
+
+              <label className="text-sm sm:col-span-2">Notas de resolución / justificación
+                <textarea
+                  rows={2}
+                  placeholder="Detalles de la corrección o justificación de descarte/cierre..."
+                  value={dtoEdicion.notasResolucion}
+                  onChange={(e) => capturarDatosEdicion('notasResolucion', e.target.value)}
+                  className="w-full rounded border border-slate-300 bg-white p-1.5 text-xs text-slate-700"
+                />
+              </label>
+
+              <div className="flex justify-end gap-3 sm:col-span-2 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={cancelarEdicion}
+                  disabled={ocupado}
+                  className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={ocupado}
+                  className="rounded bg-blue-700 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50 shadow-xs"
+                >
+                  {ocupado ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {tablero && (
+        <TableroDefectosWidget
+          tablero={tablero}
+          onEditarDefecto={iniciarEdicion}
+          onCambiarEstadoDefecto={cambiarEstadoDirecto}
+        />
+      )}
     </section>
   );
 }

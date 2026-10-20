@@ -29,6 +29,7 @@ function validarDatosGenerales(dto = {}) {
 function validarRolesRequeridos(roles = []) {
   const errores = [];
   const ROLES_OBLIGATORIOS = [RolEquipo.QA, RolEquipo.TECNICO, RolEquipo.GESTION_PROYECTO];
+  const ROLES_VALIDOS = Object.values(RolEquipo);
 
   if (!Array.isArray(roles) || roles.length === 0) {
     errores.push(new ErrorValidacion('rolesEquipo', 'Se deben asignar los tres roles obligatorios del equipo (QA, Líder Técnico y Gestión de Proyecto).'));
@@ -38,18 +39,33 @@ function validarRolesRequeridos(roles = []) {
     return errores;
   }
 
-  const rolesAsignados = new Map();
+  const conteoRoles = {
+    [RolEquipo.QA]: 0,
+    [RolEquipo.TECNICO]: 0,
+    [RolEquipo.GESTION_PROYECTO]: 0,
+    [RolEquipo.DEVELOPER]: 0,
+  };
+
   for (const r of roles) {
     const rolNormalizado = (r.role || r.rol || '').toUpperCase();
     const nombreMiembro = (r.memberName || r.member_name || r.name || r.nombre || '').trim();
-    if (rolNormalizado && nombreMiembro) {
-      rolesAsignados.set(rolNormalizado, nombreMiembro);
+
+    if (!ROLES_VALIDOS.includes(rolNormalizado)) {
+      errores.push(new ErrorValidacion('rolesEquipo', `Rol '${r.role}' no válido. Roles permitidos: ${ROLES_VALIDOS.join(', ')}.`));
+      continue;
+    }
+
+    if (nombreMiembro) {
+      conteoRoles[rolNormalizado] = (conteoRoles[rolNormalizado] || 0) + 1;
     }
   }
 
   for (const rolReq of ROLES_OBLIGATORIOS) {
-    if (!rolesAsignados.has(rolReq)) {
+    const cantidad = conteoRoles[rolReq] || 0;
+    if (cantidad === 0) {
       errores.push(new ErrorValidacion(`rol_${rolReq}`, `Debe asignar a un integrante para el rol obligatorio de ${rolReq}.`));
+    } else if (cantidad > 1) {
+      errores.push(new ErrorValidacion(`rol_${rolReq}`, `Solo se permite un único integrante para el rol de ${rolReq}. El rol Desarrollador es el único que admite integrantes ilimitados.`));
     }
   }
 

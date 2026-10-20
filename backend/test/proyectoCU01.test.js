@@ -61,6 +61,31 @@ test('CU-01 FA-02.02: ValidadorRegistro exige los tres roles obligatorios (QA, T
   ];
   const sinErroresRoles = validador.validarRolesRequeridos(rolesCompletos);
   assert.strictEqual(sinErroresRoles.length, 0);
+
+  // Rol DEVELOPER ilimitado junto con los 3 obligatorios
+  const conDesarrolladores = [
+    ...rolesCompletos,
+    { role: RolEquipo.DEVELOPER, memberName: 'Ana Ruiz' },
+    { role: RolEquipo.DEVELOPER, memberName: 'Luis Morales' },
+    { role: RolEquipo.DEVELOPER, memberName: 'Sofía Castro' },
+  ];
+  const sinErroresDevs = validador.validarRolesRequeridos(conDesarrolladores);
+  assert.strictEqual(sinErroresDevs.length, 0);
+
+  // Roles obligatorios duplicados son rechazados (solo DEVELOPER es ilimitado)
+  const conQADuplicado = [
+    ...rolesCompletos,
+    { role: RolEquipo.QA, memberName: 'Segundo QA' },
+  ];
+  const errQADup = validador.validarRolesRequeridos(conQADuplicado);
+  assert.ok(errQADup.some((e) => e.campo === 'rol_QA' && e.mensaje.includes('único integrante')));
+
+  const conTecnicoDuplicado = [
+    ...rolesCompletos,
+    { role: RolEquipo.TECNICO, memberName: 'Segundo Técnico' },
+  ];
+  const errTecDup = validador.validarRolesRequeridos(conTecnicoDuplicado);
+  assert.ok(errTecDup.some((e) => e.campo === 'rol_TECNICO' && e.mensaje.includes('único integrante')));
 });
 
 test('CU-01 FN-03: GeneradorPlanQA propone actividades estructuradas por fase ISO/IEC 29110', () => {

@@ -63,7 +63,7 @@ async function getProyectoActivo(req, res) {
     if (!proyecto) {
       return res.status(404).json({
         existe: false,
-        mensaje: 'No hay ningún proyecto registrado para el periodo actual. El sistema está listo para registrar el proyecto inicial (CU-01).',
+        mensaje: 'No hay ningún proyecto registrado para el periodo actual. El sistema está listo para registrar el proyecto inicial.',
       });
     }
 

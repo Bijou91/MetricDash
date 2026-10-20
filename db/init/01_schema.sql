@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS project_members (
   project_id UUID NOT NULL REFERENCES monitored_projects(id) ON DELETE CASCADE,
   member_name VARCHAR(150) NOT NULL,
   email VARCHAR(150),
-  role VARCHAR(50) NOT NULL CHECK (role IN ('QA', 'TECNICO', 'GESTION_PROYECTO')),
+  role VARCHAR(50) NOT NULL CHECK (role IN ('QA', 'TECNICO', 'GESTION_PROYECTO', 'DEVELOPER')),
   created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 

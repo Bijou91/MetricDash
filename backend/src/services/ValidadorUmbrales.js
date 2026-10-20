@@ -1,4 +1,4 @@
-const { TipoMetrica, SentidoMetrica, ErrorValidacion } = require('./entidades/metricas');
+const { TipoMetrica, SentidoMetrica, ErrorValidacion, DEFINICION_METRICAS } = require('./entidades/metricas');
 
 const CAMPOS = ['meta', 'umbralAdvertencia', 'umbralCritico'];
 
@@ -28,7 +28,10 @@ function validarCompletitud(metricas) {
 
 // FA-02.01: MAYOR_ES_MEJOR → meta > advertencia > crítico; MENOR_ES_MEJOR → meta < advertencia < crítico.
 function validarCoherencia(metrica) {
-  const { tipo, sentido, meta, umbralAdvertencia: adv, umbralCritico: crit } = metrica;
+  const tipo = metrica?.tipo;
+  const def = DEFINICION_METRICAS[tipo];
+  const sentido = metrica?.sentido || def?.sentido;
+  const { meta, umbralAdvertencia: adv, umbralCritico: crit } = metrica || {};
   const mayor = sentido === SentidoMetrica.MAYOR_ES_MEJOR;
   const errores = [];
   if (mayor ? !(meta > adv) : !(meta < adv)) {
@@ -44,10 +47,13 @@ function validarCoherencia(metrica) {
 
 // Porcentajes en 0..100; densidad de defectos >= 0.
 function validarRango(metrica) {
-  const porcentaje = metrica.unidad === '%';
+  const tipo = metrica?.tipo;
+  const def = DEFINICION_METRICAS[tipo];
+  const unidad = metrica?.unidad || def?.unidad;
+  const porcentaje = unidad === '%';
   return CAMPOS
-    .filter((campo) => metrica[campo] < 0 || (porcentaje && metrica[campo] > 100))
-    .map((campo) => new ErrorValidacion(metrica.tipo, campo,
+    .filter((campo) => metrica?.[campo] < 0 || (porcentaje && metrica?.[campo] > 100))
+    .map((campo) => new ErrorValidacion(tipo, campo,
       porcentaje ? 'Debe estar entre 0 y 100.' : 'Debe ser mayor o igual a 0.'));
 }
 

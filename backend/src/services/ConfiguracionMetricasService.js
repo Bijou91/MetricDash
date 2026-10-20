@@ -41,7 +41,7 @@ async function guardarVersionada(proyectoId, dto, usuarioId) {
   if (!resultado.valido) throw Object.assign(new Error('Validación fallida'), { resultado });
 
   return transacciones.ejecutar(async (tx) => {
-    const ultimaVersion = await configRepo.obtenerUltimaVersion(proyectoId, tx);
+    const ultimaVersion = Number((await configRepo.obtenerUltimaVersion(proyectoId, tx)) || 0);
     await configRepo.desactivarVigente(proyectoId, tx);
     const nuevaConfig = new ConfiguracionMetricas({
       proyectoId,

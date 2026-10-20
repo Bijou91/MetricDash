@@ -182,7 +182,7 @@ test('CU-03 Controlador (precondición 3): sin umbrales de CU-02 responde 409', 
   mock.method(configRepo, 'obtenerUmbralVigente', async () => null);
   const r = await llamar('POST', `/proyectos/${PROYECTO_ID}/defectos`, dtoValido);
   assert.strictEqual(r.status, 409);
-  assert.match(r.body.mensaje, /CU-02/);
+  assert.match(r.body.mensaje, /umbrales/);
 });
 
 test('CU-03 Controlador FA-03.03: campos faltantes responden 400 sin guardar', async () => {
@@ -272,3 +272,83 @@ test('CU-03 Controlador: proyectoId que no es UUID responde 400', async () => {
   const r = await llamar('GET', '/proyectos/abc/defectos');
   assert.strictEqual(r.status, 400);
 });
+
+// ---------------------------------------------------------------- Edición y actualización de defectos
+
+const DEFECTO_UUID = '00000000-0000-0000-0000-000000000002';
+
+test('CU-03 ServicioGestionDefectos: validarCamposEdicion detecta campos inválidos', () => {
+  const errs = gestion.validarCamposEdicion({
+    severidad: 'INEXISTENTE',
+    estado: 'OTRO',
+    asignadoAId: 'no-existe',
+    descripcionDetallada: '   ',
+  }, miembros);
+  assert.deepStrictEqual(errs.sort(), ['asignadoAId', 'descripcionDetallada', 'estado', 'severidad']);
+  assert.deepStrictEqual(gestion.validarCamposEdicion({ severidad: 'ALTA', estado: 'CERRADO' }, miembros), []);
+});
+
+test('CU-03 Controlador: actualizarDefecto con defectoId inválido o campos incorrectos responde 400', async () => {
+  contextoValido();
+  const r1 = await llamar('PUT', `/proyectos/${PROYECTO_ID}/defectos/invalido`, { severidad: 'ALTA' });
+  assert.strictEqual(r1.status, 400);
+
+  const r2 = await llamar('PUT', `/proyectos/${PROYECTO_ID}/defectos/${DEFECTO_UUID}`, { severidad: 'INEXISTENTE' });
+  assert.strictEqual(r2.status, 400);
+  assert.strictEqual(r2.body.camposInvalidos.includes('severidad'), true);
+});
+
+test('CU-03 Controlador: actualizarDefecto cuando el defecto no existe responde 404', async () => {
+  contextoValido();
+  mock.method(defectoRepo, 'obtenerPorId', async () => null);
+  const r = await llamar('PUT', `/proyectos/${PROYECTO_ID}/defectos/${DEFECTO_UUID}`, { severidad: 'MEDIA' });
+  assert.strictEqual(r.status, 404);
+  assert.match(r.body.mensaje, /no encontrado/);
+});
+
+test('CU-03 Controlador: actualizarDefecto exitoso responde 200 y recalcula densidad', async () => {
+  contextoValido();
+  const defPrev = previo('Fallo inicial', { id: DEFECTO_UUID, asignadoAId: 'm-tec', asignadoNombre: 'Carlos Aguirre' });
+  mock.method(defectoRepo, 'obtenerPorId', async () => defPrev);
+  mock.method(defectoRepo, 'actualizar', async (id, datos) => Object.assign(new Defecto(defPrev), datos));
+  const guardarMedicion = transaccionValida({ totalDefectos: 3 });
+
+  const r = await llamar('PUT', `/proyectos/${PROYECTO_ID}/defectos/${DEFECTO_UUID}`, {
+    descripcionDetallada: 'Fallo corregido y re-etiquetado',
+    severidad: 'CRITICA',
+    estado: 'EN_RESOLUCION',
+  });
+
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.body.actualizacionExitosa, true);
+  assert.strictEqual(r.body.defecto.severidad, 'CRITICA');
+  assert.strictEqual(r.body.defecto.estado, 'EN_RESOLUCION');
+  assert.strictEqual(r.body.densidadDefectosActualizada, 0.67);
+  assert.strictEqual(guardarMedicion.mock.callCount(), 1);
+});
+
+test('CU-03 Controlador: actualizarEstadoDefecto con estado inválido responde 400', async () => {
+  const r = await llamar('PATCH', `/proyectos/${PROYECTO_ID}/defectos/${DEFECTO_UUID}/estado`, { estado: 'VOLANDO' });
+  assert.strictEqual(r.status, 400);
+  assert.match(r.body.mensaje, /Estado inválido/);
+});
+
+test('CU-03 Controlador: actualizarEstadoDefecto a DESCARTADO reduce densidad y responde 200', async () => {
+  contextoValido();
+  const defPrev = previo('Fallo', { id: DEFECTO_UUID, asignadoAId: 'm-tec', asignadoNombre: 'Carlos Aguirre' });
+  mock.method(defectoRepo, 'obtenerPorId', async () => defPrev);
+  mock.method(defectoRepo, 'actualizarEstado', async (id, est, notas) => Object.assign(new Defecto(defPrev), { estado: est, notasResolucion: notas }));
+  // Al descartarse, contarDefectosProyecto excluye los descartados (baja de 2 a 1)
+  transaccionValida({ totalDefectos: 1 });
+
+  const r = await llamar('PATCH', `/proyectos/${PROYECTO_ID}/defectos/${DEFECTO_UUID}/estado`, {
+    estado: 'DESCARTADO',
+    notasResolucion: 'Se determinó que es un comportamiento esperado',
+  });
+
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.body.actualizacionExitosa, true);
+  assert.strictEqual(r.body.defecto.estado, 'DESCARTADO');
+  assert.strictEqual(r.body.densidadDefectosActualizada, 0.22);
+});
+

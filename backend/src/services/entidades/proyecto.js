@@ -8,6 +8,7 @@ const RolEquipo = Object.freeze({
   QA: 'QA',
   TECNICO: 'TECNICO',
   GESTION_PROYECTO: 'GESTION_PROYECTO',
+  DEVELOPER: 'DEVELOPER',
 });
 
 const FaseProyecto = Object.freeze({
