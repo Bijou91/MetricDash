@@ -33,7 +33,6 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
   const [propuestaPlan, setPropuestaPlan] = useState(null);
   const [mostrarPrevisualizacionPlan, setMostrarPrevisualizacionPlan] = useState(false);
   const [cargandoPropuesta, setCargandoPropuesta] = useState(false);
-  const [mostrarModalTestDoble, setMostrarModalTestDoble] = useState(false);
 
   // Alertas y errores
   const [errores, setErrores] = useState([]);
@@ -107,23 +106,11 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
     );
   }
 
-  // Plantilla rápida de ayuda para pruebas
-  function handleCargarPlantillaEquipo() {
-    setIntegrantes([
-      { id: 1, role: 'QA', memberName: 'Héctor Varela', email: 'hector.varela@uaz.edu.mx' },
-      { id: 2, role: 'TECNICO', memberName: 'Carlos Aguirre', email: 'carlos.aguirre@uaz.edu.mx' },
-      { id: 3, role: 'GESTION_PROYECTO', memberName: 'Karol Espino', email: 'karol.espino@uaz.edu.mx' },
-    ]);
-    if (!nombre) setNombre('MetricDash SQA');
-    if (!estimatedKloc) setEstimatedKloc('4.5');
-    if (!descripcion) setDescripcion('Sistema para monitorear y gestionar actividades de Aseguramiento de Calidad.');
-  }
-
   function handleLimpiarIntegrantes() {
     setIntegrantes([]);
   }
 
-  // Envío del registro del proyecto (FN-01 / FN-02)
+  // Envío del registro del proyecto
   async function handleSubmit(e) {
     e.preventDefault();
     setEnviando(true);
@@ -152,21 +139,21 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
     try {
       const resp = await proyectosApi.registrarProyecto(payload);
 
-      // FA-02.02: Campos o roles incompletos
+      // Campos o roles incompletos
       if (resp.status === 400) {
         setErrores(resp.data?.errores || []);
         setMensaje({
           tipo: 'error',
-          texto: 'Validación fallida (FA-02.02): Verifique los campos y roles obligatorios resaltados en rojo.',
+          texto: 'Validación fallida: Verifique los campos y roles obligatorios resaltados en rojo.',
         });
         return;
       }
 
-      // FA-02.01: Restricción monoproyecto excedida
+      // Restricción monoproyecto excedida
       if (resp.status === 409) {
         setMensaje({
           tipo: 'alerta',
-          texto: resp.data?.mensaje || 'Ya existe un proyecto activo registrado para el periodo en curso (FA-02.01).',
+          texto: resp.data?.mensaje || 'Ya existe un proyecto activo registrado para el periodo en curso. Solo se permite un proyecto por periodo.',
         });
         await cargarEstadoInicial();
         return;
@@ -252,7 +239,7 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
   async function handleReiniciarProyecto() {
     if (!proyectoActivo?.proyecto?.id) return;
     const seguro = window.confirm(
-      '¿Estás seguro de que deseas eliminar este proyecto y sus datos asociados? Esta acción te permitirá volver a registrar el proyecto desde cero para testear el CU-01.'
+      '¿Estás seguro de que deseas eliminar este proyecto y sus datos asociados? Esta acción te permitirá registrar un nuevo proyecto desde cero.'
     );
     if (!seguro) return;
 
@@ -261,7 +248,7 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
       setProyectoActivo(null);
       setMensaje({
         tipo: 'exito',
-        texto: 'El proyecto fue reiniciado. Ahora puedes probar el registro del proyecto (CU-01) completamente desde cero.',
+        texto: 'El proyecto fue reiniciado. Ahora puedes registrar un nuevo proyecto desde cero.',
       });
       // Limpiar formulario para empezar fresco
       setNombre('');
@@ -280,7 +267,7 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
 
   const errorDe = (campo) => errores.filter((e) => e.campo === campo);
 
-  // Verificación de los 3 roles obligatorios en tiempo real (FA-02.02: solo si tienen nombre asignado no vacío)
+  // Verificación de los 3 roles obligatorios en tiempo real
   const integrantesConNombre = integrantes.filter(
     (i) => i.memberName && i.memberName.trim().length > 0
   );
@@ -305,7 +292,7 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              CU-01: Registrar el Proyecto del Periodo y Plan Base de QA
+              Registrar el Proyecto del Periodo y Plan Base de QA
             </h2>
             <p className="mt-1 text-sm text-slate-500">
               Periodo Académico Activo:{' '}
@@ -402,22 +389,14 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
                     onClick={onIrACU02}
                     className="inline-flex items-center rounded-lg bg-blue-700 px-4 py-2 text-xs font-bold text-white shadow hover:bg-blue-800 transition"
                   >
-                    🎯 Configurar Métricas (CU-02) →
+                    🎯 Configurar Métricas →
                   </button>
                 )}
                 <button
                   type="button"
-                  onClick={() => setMostrarModalTestDoble(true)}
-                  className="inline-flex items-center rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition"
-                  title="Prueba el flujo alternativo FA-02.01 intentando registrar un segundo proyecto"
-                >
-                  🧪 Probar Restricción Monoproyecto (FA-02.01)
-                </button>
-                <button
-                  type="button"
                   onClick={handleReiniciarProyecto}
                   className="inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition"
-                  title="Elimina este proyecto para poder volver a probar el formulario de registro"
+                  title="Reinicia este proyecto para registrar uno nuevo"
                 >
                   🗑️ Reiniciar Proyecto
                 </button>
@@ -498,76 +477,10 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
             lineaBase={proyectoActivo.lineaBase}
           />
 
-          {/* Modal / Panel para Probar FA-02.01 (Doble Registro) */}
-          {mostrarModalTestDoble && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-              <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl">
-                <div className="flex items-center justify-between border-b pb-3">
-                  <h4 className="text-base font-bold text-slate-900">
-                    Probar Flujo Alternativo FA-02.01 (Restricción Monoproyecto)
-                  </h4>
-                  <button
-                    type="button"
-                    onClick={() => setMostrarModalTestDoble(false)}
-                    className="text-slate-400 hover:text-slate-600"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <p className="mt-3 text-xs text-slate-600">
-                  La especificación dicta que el sistema debe rechazar el registro de un segundo proyecto en el mismo periodo académico, impidiendo violar el alcance monoproyecto.
-                </p>
-
-                <div className="mt-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-900 border border-amber-200">
-                  Presiona el botón para enviar una petición de registro de un segundo proyecto al backend y verificar que responde con <strong>HTTP 409 Conflict</strong>.
-                </div>
-
-                <div className="mt-5 flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setMostrarModalTestDoble(false)}
-                    className="rounded-lg border px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setMostrarModalTestDoble(false);
-                      try {
-                        const resp = await proyectosApi.registrarProyecto({
-                          name: 'Proyecto Adicional Intruso',
-                          projectType: 'MANTENIMIENTO',
-                          estimatedKloc: 3.0,
-                          periodId: periodoActivo?.id,
-                          members: [
-                            { role: 'QA', memberName: 'Tester QA' },
-                            { role: 'TECNICO', memberName: 'Tester Dev' },
-                            { role: 'GESTION_PROYECTO', memberName: 'Tester PM' },
-                          ],
-                        });
-                        if (resp.status === 409) {
-                          setMensaje({
-                            tipo: 'alerta',
-                            texto: `✓ Prueba FA-02.01 superada: El sistema bloqueó la acción con HTTP 409. Mensaje del backend: "${resp.data?.mensaje}"`,
-                          });
-                        }
-                      } catch (e) {
-                        alert(`Resultado: ${e.message}`);
-                      }
-                    }}
-                    className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 shadow"
-                  >
-                    Intentar Registrar Segundo Proyecto (Test FA-02.01)
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       ) : (
         /* ========================================================================= */
-        /* VISTA B: FORMULARIO DINÁMICO DE REGISTRO DE PROYECTO (FN-01 / FN-02)       */
+        /* VISTA B: FORMULARIO DINÁMICO DE REGISTRO DE PROYECTO                      */
         /* ========================================================================= */
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Tarjeta de Datos Generales */}
@@ -581,15 +494,6 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
                   Captura el nombre, tipo de desarrollo y dimensión estimada para iniciar la gobernanza de calidad.
                 </p>
               </div>
-
-              {/* Botón de ayuda para rellenar datos rápidos */}
-              <button
-                type="button"
-                onClick={handleCargarPlantillaEquipo}
-                className="mt-2 sm:mt-0 inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition"
-              >
-                ⚡ Rellenar con Datos de Ejemplo Rápidos
-              </button>
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -629,7 +533,7 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
                   ))}
                 </select>
                 <p className="mt-1 text-[11px] text-slate-400">
-                  Determina la propuesta de actividades SQA según ISO/IEC 29110 (FN-03).
+                  Determina la propuesta de actividades SQA según ISO/IEC 29110.
                 </p>
               </div>
 
@@ -699,7 +603,7 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
                   2. Asignación de Roles del Equipo de Trabajo
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Es mandatorio asignar al menos un integrante con nombre a cada rol obligatorio: <strong>QA</strong>, <strong>Líder Técnico</strong> y <strong>Gestión de Proyecto</strong> (FA-02.02).
+                  Es mandatorio asignar al menos un integrante con nombre a cada rol obligatorio: <strong>QA</strong>, <strong>Líder Técnico</strong> y <strong>Gestión de Proyecto</strong>.
                 </p>
               </div>
 
@@ -767,7 +671,7 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
               <div className="rounded-lg border border-dashed border-red-300 p-8 text-center bg-red-50/30">
                 <p className="text-sm font-bold text-red-700">No has agregado integrantes al equipo todavía.</p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Haz clic en <strong>"+ Agregar Integrante"</strong> o en <strong>"⚡ Rellenar con Datos de Ejemplo Rápidos"</strong> para completar los 3 roles obligatorios.
+                  Haz clic en <strong>"+ Agregar Integrante"</strong> para completar los 3 roles obligatorios.
                 </p>
               </div>
             ) : (
@@ -879,7 +783,7 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
                 disabled={enviando}
                 className="w-full sm:w-auto rounded-lg bg-blue-700 px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-blue-800 disabled:opacity-50 transition"
               >
-                {enviando ? 'Guardando y generando plan...' : '✔ Registrar Proyecto y Generar Plan QA (FN-04)'}
+                {enviando ? 'Guardando y generando plan...' : '✔ Registrar Proyecto y Generar Plan QA'}
               </button>
             </div>
           </div>

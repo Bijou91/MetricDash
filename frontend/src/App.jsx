@@ -57,7 +57,7 @@ export default function App() {
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
-            CU-01: Registro de Proyecto y Plan QA
+            Registro de Proyecto y Plan QA
           </button>
           <button
             type="button"
@@ -68,7 +68,7 @@ export default function App() {
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
-            CU-02: Métricas de Calidad y Umbrales
+            Métricas de Calidad y Umbrales
           </button>
         </nav>
       </header>

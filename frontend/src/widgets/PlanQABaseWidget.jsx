@@ -63,7 +63,7 @@ export default function PlanQABaseWidget({ planQA, modoPrevisualizacion = false,
                 ? 'bg-amber-100 text-amber-800'
                 : 'bg-blue-50 text-blue-700'
             }`}>
-              {modoPrevisualizacion ? 'Vista Previa FN-03' : 'Línea Base v1.0'}
+              {modoPrevisualizacion ? 'Vista Previa' : 'Línea Base v1.0'}
             </span>
           </div>
           <p className="mt-1 text-xs text-slate-500">
