@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import * as api from '../api/MetricasApiClient';
-import SemaforoPreviewWidget from './SemaforoPreviewWidget';
-import { ETIQUETAS, CAMPOS } from './metricas';
+import SemaforoPreviewWidget from '../widgets/SemaforoPreviewWidget';
+import { ETIQUETAS, CAMPOS } from '../widgets/metricas';
 
 const formularioVacio = () =>
   Object.keys(ETIQUETAS).map((tipo) => ({ tipo, meta: '', umbralAdvertencia: '', umbralCritico: '' }));

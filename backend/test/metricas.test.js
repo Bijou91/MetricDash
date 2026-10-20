@@ -8,7 +8,7 @@ const {
   EstadoSemaforo,
   DEFINICION_METRICAS,
   MetricaCalidad,
-} = require('../src/domain/metricas');
+} = require('../src/services/entidades/metricas');
 
 const validas = [
   { tipo: 'DENSIDAD_DEFECTOS', meta: 1.0, umbralAdvertencia: 3.0, umbralCritico: 5.0 },

@@ -15,16 +15,22 @@
 process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://sqa_user:sqa_password@localhost:5432/sqa_dashboard';
 
 const assert = require('node:assert');
-const pool = require('../src/db/pool');
+const pool = require('../src/data/pool');
 const service = require('../src/services/ConfiguracionMetricasService');
-const configRepo = require('../src/repositories/ConfiguracionMetricasRepository');
-const proyectoRepo = require('../src/repositories/ProyectoRepository');
-const { TipoMetrica, EstadoSemaforo } = require('../src/domain/metricas');
+const configRepo = require('../src/data/ConfiguracionMetricasRepository');
+const proyectoRepo = require('../src/data/ProyectoRepository');
+const { TipoMetrica, EstadoSemaforo } = require('../src/services/entidades/metricas');
 
 async function ejecutarPruebaSintetica() {
   console.log('======================================================================');
   console.log(' INICIANDO PRUEBA SINTÉTICA DEL CASO DE USO CU-02 (METRICDASH)       ');
   console.log('======================================================================\n');
+
+  // Lo que la prueba crea, para limpiar solo eso al final y no tocar datos reales.
+  let proyectoSembradoId = null;
+  let proyectoId = null;
+  let versionInicial = 0;
+  let vigenteInicialId = null;
 
   try {
     // -----------------------------------------------------------------------
@@ -45,8 +51,9 @@ async function ejecutarPruebaSintetica() {
         [periodo.id]
       );
       proyecto = rows[0];
+      proyectoSembradoId = proyecto.id;
     }
-    const proyectoId = proyecto.id;
+    proyectoId = proyecto.id;
     console.log(`  ✓ Proyecto activo verificado: "${proyecto.name}" (ID: ${proyectoId})\n`);
 
     // -----------------------------------------------------------------------
@@ -54,6 +61,10 @@ async function ejecutarPruebaSintetica() {
     // -----------------------------------------------------------------------
     console.log('[2/7] FN-01: Consultando configuración vigente actual...');
     const vigenteInicial = await configRepo.obtenerVigente(proyectoId);
+    vigenteInicialId = vigenteInicial?.id ?? null;
+    const { rows: [{ v }] } = await pool.query(
+      'SELECT COALESCE(MAX(version), 0) AS v FROM metric_configurations WHERE project_id = $1', [proyectoId]);
+    versionInicial = v;
     console.log(`  ✓ Estado inicial de configuración: ${vigenteInicial ? `Versión ${vigenteInicial.version}` : 'Sin configuración previa'}\n`);
 
     // -----------------------------------------------------------------------
@@ -201,11 +212,18 @@ async function ejecutarPruebaSintetica() {
     console.log(' ¡PRUEBA SINTÉTICA DE CU-02 COMPLETADA EXITOSAMENTE! (100% PASS)       ');
     console.log('======================================================================');
   } finally {
-    // Limpieza de datos sintéticos para no dejar la base de datos bloqueada para el usuario
+    // Borra solo las versiones creadas aquí y restaura la configuración vigente previa.
     try {
-      await pool.query('DELETE FROM metric_configurations');
-      await pool.query('DELETE FROM monitored_projects');
-    } catch (_) {}
+      if (proyectoId) {
+        await pool.query('DELETE FROM metric_configurations WHERE project_id = $1 AND version > $2', [proyectoId, versionInicial]);
+        if (vigenteInicialId) {
+          await pool.query('UPDATE metric_configurations SET is_current = true WHERE id = $1', [vigenteInicialId]);
+        }
+      }
+      if (proyectoSembradoId) await pool.query('DELETE FROM monitored_projects WHERE id = $1', [proyectoSembradoId]);
+    } catch (err) {
+      console.error('Limpieza incompleta:', err.message);
+    }
     await pool.end();
   }
 }

@@ -1,7 +1,7 @@
 const express = require('express');
 const service = require('../services/ConfiguracionMetricasService');
-const configRepo = require('../repositories/ConfiguracionMetricasRepository');
-const { ErrorPersistencia } = require('../domain/metricas');
+const configRepo = require('../data/ConfiguracionMetricasRepository');
+const { ErrorPersistencia } = require('../data/TransaccionManager');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

@@ -4,7 +4,7 @@ const assert = require('node:assert');
 const validador = require('../src/services/ValidadorRegistro');
 const generadorPlan = require('../src/services/GeneradorPlanQA');
 const generadorTablero = require('../src/services/GeneradorTablero');
-const { TipoProyecto, RolEquipo, FaseProyecto, NivelSemaforo, ProyectoExistenteException } = require('../src/domain/proyecto');
+const { TipoProyecto, RolEquipo, FaseProyecto, NivelSemaforo, ProyectoExistenteException } = require('../src/services/entidades/proyecto');
 
 // 1. Pruebas de validación de datos generales y roles obligatorios (FA-02.02)
 test('CU-01 FA-02.02: ValidadorRegistro detecta datos generales faltantes o inválidos', () => {

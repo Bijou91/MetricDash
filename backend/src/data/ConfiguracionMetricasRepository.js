@@ -1,5 +1,5 @@
-const pool = require('../db/pool');
-const { ConfiguracionMetricas } = require('../domain/metricas');
+const pool = require('./pool');
+const { ConfiguracionMetricas } = require('../services/entidades/metricas');
 
 async function obtenerVigente(proyectoId) {
   const { rows } = await pool.query(

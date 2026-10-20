@@ -1,4 +1,4 @@
-const { NivelSemaforo } = require('../domain/proyecto');
+const { NivelSemaforo } = require('./entidades/proyecto');
 
 function crearTableroInicial(proyecto = {}, lineaBase = {}, planQA = {}) {
   return {

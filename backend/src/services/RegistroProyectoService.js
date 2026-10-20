@@ -1,9 +1,9 @@
-const proyectoRepo = require('../repositories/ProyectoRepository');
+const proyectoRepo = require('../data/ProyectoRepository');
 const validador = require('./ValidadorRegistro');
 const generadorPlan = require('./GeneradorPlanQA');
 const generadorTablero = require('./GeneradorTablero');
 const txManager = require('../data/TransaccionManager');
-const { ProyectoExistenteException, RolEquipo, TipoProyecto } = require('../domain/proyecto');
+const { ProyectoExistenteException, RolEquipo, TipoProyecto } = require('./entidades/proyecto');
 
 async function registrarProyecto(dto = {}) {
   // 1. FA-02.02: Validación de completitud de datos generales y roles obligatorios

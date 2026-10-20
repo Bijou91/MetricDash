@@ -12,6 +12,8 @@ async function request(path, options = {}) {
   throw new Error(body?.mensaje || `Error ${res.status}`);
 }
 
+export const verificarConexion = async () => (await request('/health')).data;
+
 export const obtenerPeriodoActivo = async () => {
   const resp = await request('/periodos/activo');
   return resp.data;

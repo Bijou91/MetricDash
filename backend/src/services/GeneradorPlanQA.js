@@ -1,4 +1,4 @@
-const { FaseProyecto, RolEquipo, EstadoActividad, TipoProyecto } = require('../domain/proyecto');
+const { FaseProyecto, RolEquipo, EstadoActividad, TipoProyecto } = require('./entidades/proyecto');
 
 function generarPlanBase(tipoProyecto = TipoProyecto.DESARROLLO_NUEVO) {
   const actividadesComunes = [

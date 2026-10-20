@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import RegistroProyectoView from './components/RegistroProyectoView';
-import ConfigMetricasView from './components/ConfigMetricasView';
+import RegistroProyectoView from './views/RegistroProyectoView';
+import ConfigMetricasView from './views/ConfigMetricasView';
 import * as proyectosApi from './api/ProyectosApiClient';
 
 export default function App() {
@@ -9,10 +9,9 @@ export default function App() {
   const [proyectoActivo, setProyectoActivo] = useState(null);
 
   useEffect(() => {
-    fetch('http://localhost:4000/api/health')
-      .then((res) => res.json())
+    proyectosApi.verificarConexion()
       .then((data) => setApiStatus(`Conectado al Backend (${data.status})`))
-      .catch(() => setApiStatus('Backend aún no responde en http://localhost:4000'));
+      .catch(() => setApiStatus('Backend aún no responde'));
 
     // Consultar si ya existe proyecto activo registrado
     proyectosApi.obtenerProyectoPeriodoActivo()

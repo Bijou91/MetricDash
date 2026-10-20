@@ -1,4 +1,4 @@
-const { TipoMetrica, SentidoMetrica, ErrorValidacion } = require('../domain/metricas');
+const { TipoMetrica, SentidoMetrica, ErrorValidacion } = require('./entidades/metricas');
 
 const CAMPOS = ['meta', 'umbralAdvertencia', 'umbralCritico'];
 

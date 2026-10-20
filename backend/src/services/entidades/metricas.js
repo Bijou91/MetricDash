@@ -47,8 +47,6 @@ class ErrorValidacion {
   }
 }
 
-class ErrorPersistencia extends Error {}
-
 module.exports = {
   TipoMetrica,
   SentidoMetrica,
@@ -57,5 +55,4 @@ module.exports = {
   MetricaCalidad,
   ConfiguracionMetricas,
   ErrorValidacion,
-  ErrorPersistencia,
 };

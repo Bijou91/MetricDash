@@ -1,8 +1,8 @@
 const express = require('express');
 const service = require('../services/RegistroProyectoService');
-const proyectoRepo = require('../repositories/ProyectoRepository');
-const { ErrorPersistencia } = require('../domain/metricas');
-const { ProyectoExistenteException } = require('../domain/proyecto');
+const proyectoRepo = require('../data/ProyectoRepository');
+const { ErrorPersistencia } = require('../data/TransaccionManager');
+const { ProyectoExistenteException } = require('../services/entidades/proyecto');
 
 function manejarError(res, err) {
   if (err.resultado) {

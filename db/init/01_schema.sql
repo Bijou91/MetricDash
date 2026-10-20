@@ -1,4 +1,4 @@
--- Esquema idempotente: se ejecuta en cada arranque del API.
+-- Lo ejecuta el contenedor sqa_db (docker-entrypoint-initdb.d) solo cuando el volumen pgdata está vacío.
 -- academic_periods y monitored_projects siguen el diagrama ER.
 CREATE TABLE IF NOT EXISTS academic_periods (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

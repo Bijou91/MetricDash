@@ -1,4 +1,4 @@
-const { TipoProyecto, RolEquipo, ErrorValidacion } = require('../domain/proyecto');
+const { TipoProyecto, RolEquipo, ErrorValidacion } = require('./entidades/proyecto');
 
 function validarDatosGenerales(dto = {}) {
   const errores = [];

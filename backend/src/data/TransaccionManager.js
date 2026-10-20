@@ -1,5 +1,6 @@
-const pool = require('../db/pool');
-const { ErrorPersistencia } = require('../domain/metricas');
+const pool = require('./pool');
+
+class ErrorPersistencia extends Error {}
 
 // FE-01: cualquier fallo dentro de la operación hace ROLLBACK y se reporta como ErrorPersistencia.
 async function ejecutar(operacion) {
@@ -13,7 +14,7 @@ async function ejecutar(operacion) {
   } catch (err) {
     if (tx) await rollback(tx);
     console.error('[TransaccionManager]', err);
-    throw new ErrorPersistencia(err.message || 'No se pudo guardar la información. Intente de nuevo.');
+    throw new ErrorPersistencia('No se pudo guardar la información. Intente de nuevo.');
   } finally {
     tx?.release();
   }
@@ -27,4 +28,4 @@ async function rollback(tx) {
   }
 }
 
-module.exports = { ejecutar, rollback };
+module.exports = { ejecutar, rollback, ErrorPersistencia };

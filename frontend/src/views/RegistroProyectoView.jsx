@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import * as proyectosApi from '../api/ProyectosApiClient';
-import PlanQABaseWidget from './PlanQABaseWidget';
-import TableroInicialWidget from './TableroInicialWidget';
+import PlanQABaseWidget from '../widgets/PlanQABaseWidget';
+import TableroInicialWidget from '../widgets/TableroInicialWidget';
 
 const TIPOS_PROYECTO = [
   { valor: 'DESARROLLO_NUEVO', etiqueta: 'Desarrollo Nuevo (Ciclo Completo ISO/IEC 29110)' },

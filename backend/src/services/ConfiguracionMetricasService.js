@@ -1,8 +1,8 @@
 const validador = require('./ValidadorUmbrales');
 const transacciones = require('../data/TransaccionManager');
-const proyectoRepo = require('../repositories/ProyectoRepository');
-const configRepo = require('../repositories/ConfiguracionMetricasRepository');
-const { MetricaCalidad, ConfiguracionMetricas, SentidoMetrica, EstadoSemaforo } = require('../domain/metricas');
+const proyectoRepo = require('../data/ProyectoRepository');
+const configRepo = require('../data/ConfiguracionMetricasRepository');
+const { MetricaCalidad, ConfiguracionMetricas, SentidoMetrica, EstadoSemaforo } = require('./entidades/metricas');
 
 function errorConStatus(status, message) {
   return Object.assign(new Error(message), { status });
