@@ -76,7 +76,10 @@ export default function App() {
 
       <main>
         {tabActiva === 'cu01' && (
-          <RegistroProyectoView onProyectoRegistrado={handleProyectoRegistrado} />
+          <RegistroProyectoView
+            onProyectoRegistrado={handleProyectoRegistrado}
+            onIrACU02={() => setTabActiva('cu02')}
+          />
         )}
 
         {tabActiva === 'cu02' && (

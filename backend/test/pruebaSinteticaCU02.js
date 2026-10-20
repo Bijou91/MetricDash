@@ -201,6 +201,11 @@ async function ejecutarPruebaSintetica() {
     console.log(' ¡PRUEBA SINTÉTICA DE CU-02 COMPLETADA EXITOSAMENTE! (100% PASS)       ');
     console.log('======================================================================');
   } finally {
+    // Limpieza de datos sintéticos para no dejar la base de datos bloqueada para el usuario
+    try {
+      await pool.query('DELETE FROM metric_configurations');
+      await pool.query('DELETE FROM monitored_projects');
+    } catch (_) {}
     await pool.end();
   }
 }

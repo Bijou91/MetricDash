@@ -1,6 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
-async function request(path, options) {
+async function request(path, options = {}) {
   const res = await fetch(`${API_URL}/api${path}`, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
@@ -22,6 +22,11 @@ export const obtenerProyectoPeriodoActivo = async () => {
   return resp.data;
 };
 
+export const obtenerPropuestaPlan = async (tipoProyecto) => {
+  const resp = await request(`/proyectos/propuesta-plan?tipoProyecto=${encodeURIComponent(tipoProyecto)}`);
+  return resp.data;
+};
+
 export const registrarProyecto = async (datosProyecto) => {
   const resp = await request('/proyectos', {
     method: 'POST',
@@ -30,8 +35,26 @@ export const registrarProyecto = async (datosProyecto) => {
   return resp;
 };
 
+export const actualizarEstadoActividad = async (actividadId, status) => {
+  const resp = await request(`/proyectos/actividades/${actividadId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+  return resp.data;
+};
+
+export const eliminarProyecto = async (proyectoId) => {
+  const resp = await request(`/proyectos/${proyectoId}`, {
+    method: 'DELETE',
+  });
+  return resp;
+};
+
 export default {
   obtenerPeriodoActivo,
   obtenerProyectoPeriodoActivo,
+  obtenerPropuestaPlan,
   registrarProyecto,
+  actualizarEstadoActividad,
+  eliminarProyecto,
 };

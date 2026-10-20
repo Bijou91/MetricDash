@@ -158,6 +158,45 @@ async function guardarProyectoCompleto({ proyecto, roles, actividades, lineaBase
   };
 }
 
+// Obtener el corte inicial (Tablero CP1) del proyecto
+async function obtenerCorteInicial(proyectoId) {
+  const { rows } = await pool.query(
+    `SELECT * FROM evaluation_cutoffs WHERE project_id = $1 ORDER BY cutoff_number ASC LIMIT 1`,
+    [proyectoId],
+  );
+  return rows[0] ?? null;
+}
+
+// Actualizar estado de una actividad SQA (PLANNED, IN_PROGRESS, DONE)
+async function actualizarEstadoActividad(actividadId, status) {
+  const { rows } = await pool.query(
+    `UPDATE sqa_activities 
+        SET status = $1, execution_date = CASE WHEN $1 = 'DONE' THEN CURRENT_DATE ELSE execution_date END
+      WHERE id = $2 
+      RETURNING *`,
+    [status, actividadId],
+  );
+  if (rows[0]) {
+    // Actualizar conteo de ejecutadas en evaluation_cutoffs
+    await pool.query(
+      `UPDATE evaluation_cutoffs
+          SET executed_sqa_acts = (
+            SELECT count(*) FROM sqa_activities WHERE project_id = $1 AND status = 'DONE'
+          )
+        WHERE project_id = $1`,
+      [rows[0].project_id],
+    );
+  }
+  return rows[0] ?? null;
+}
+
+// Eliminar proyecto y reiniciar para pruebas
+async function eliminarProyecto(proyectoId) {
+  await pool.query(`DELETE FROM metric_configurations WHERE project_id = $1`, [proyectoId]);
+  const { rowCount } = await pool.query(`DELETE FROM monitored_projects WHERE id = $1`, [proyectoId]);
+  return rowCount > 0;
+}
+
 module.exports = {
   obtenerActivo,
   obtenerPeriodoActivo,
@@ -166,5 +205,9 @@ module.exports = {
   obtenerMiembros,
   obtenerActividadesQA,
   obtenerLineaBase,
+  obtenerCorteInicial,
+  actualizarEstadoActividad,
+  eliminarProyecto,
   guardarProyectoCompleto,
 };
+

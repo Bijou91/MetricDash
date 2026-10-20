@@ -70,6 +70,7 @@ async function getProyectoActivo(req, res) {
     const miembros = await proyectoRepo.obtenerMiembros(proyecto.id);
     const actividades = await proyectoRepo.obtenerActividadesQA(proyecto.id);
     const lineaBase = await proyectoRepo.obtenerLineaBase(proyecto.id);
+    const corteInicial = await proyectoRepo.obtenerCorteInicial(proyecto.id);
 
     return res.json({
       existe: true,
@@ -80,15 +81,57 @@ async function getProyectoActivo(req, res) {
         actividades,
       },
       lineaBase,
+      tableroInicial: corteInicial,
     });
   } catch (err) {
     return manejarError(res, err);
   }
 }
 
+// FN-03: Previsualizar propuesta de Plan de QA antes de confirmar
+async function getPropuestaPlan(req, res) {
+  try {
+    const generadorPlan = require('../services/GeneradorPlanQA');
+    const tipo = req.query.tipoProyecto || 'DESARROLLO_NUEVO';
+    const plan = generadorPlan.generarPlanBase(tipo);
+    return res.json(plan);
+  } catch (err) {
+    return manejarError(res, err);
+  }
+}
+
+// Actualizar estado de una actividad SQA
+async function patchActividad(req, res) {
+  try {
+    const { actividadId } = req.params;
+    const { status } = req.body;
+    const actividadActualizada = await proyectoRepo.actualizarEstadoActividad(actividadId, status);
+    if (!actividadActualizada) {
+      return res.status(404).json({ mensaje: 'Actividad no encontrada.' });
+    }
+    return res.json(actividadActualizada);
+  } catch (err) {
+    return manejarError(res, err);
+  }
+}
+
+// Eliminar proyecto (para reiniciar pruebas o entorno de desarrollo)
+async function deleteProyecto(req, res) {
+  try {
+    const { id } = req.params;
+    await proyectoRepo.eliminarProyecto(id);
+    return res.json({ mensaje: 'Proyecto eliminado exitosamente para permitir nuevo registro.' });
+  } catch (err) {
+    return manejarError(res, err);
+  }
+}
+
 const router = express.Router();
+router.get('/proyectos/propuesta-plan', getPropuestaPlan);
 router.post('/proyectos', postProyecto);
 router.get('/proyectos/activo', getProyectoActivo);
+router.delete('/proyectos/:id', deleteProyecto);
+router.patch('/proyectos/actividades/:actividadId', patchActividad);
 router.get('/periodos/activo', getPeriodoActivo);
 
 module.exports = router;

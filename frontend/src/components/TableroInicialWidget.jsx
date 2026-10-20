@@ -4,9 +4,10 @@ export default function TableroInicialWidget({ tablero, lineaBase }) {
   if (!tablero && !lineaBase) return null;
 
   const kloc = tablero?.kloc || lineaBase?.kloc || 0;
-  const plannedActs = tablero?.plannedSqaActs || lineaBase?.plannedSqaActs || 0;
-  const executedActs = tablero?.executedSqaActs || 0;
-  const healthStatus = tablero?.healthStatus || 'SIN_DATOS';
+  const plannedActs = tablero?.plannedSqaActs || tablero?.planned_sqa_acts || lineaBase?.plannedSqaActs || 0;
+  const executedActs = tablero?.executedSqaActs || tablero?.executed_sqa_acts || 0;
+  const healthStatus = tablero?.healthStatus || tablero?.health_status || 'SIN_DATOS';
+  const fechaAprobacion = lineaBase?.approvalDate || lineaBase?.approval_date;
 
   return (
     <div className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -42,7 +43,7 @@ export default function TableroInicialWidget({ tablero, lineaBase }) {
         <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
           <span className="text-xs font-semibold uppercase text-slate-500">Fecha Aprobación Línea Base</span>
           <div className="mt-1 text-base font-bold text-slate-800">
-            {lineaBase?.approvalDate ? new Date(lineaBase.approvalDate).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Hoy'}
+            {fechaAprobacion ? new Date(fechaAprobacion).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Hoy'}
           </div>
           <p className="text-xs text-slate-400">Versión 1.0 congelada</p>
         </div>
