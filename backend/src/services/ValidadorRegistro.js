@@ -31,14 +31,17 @@ function validarRolesRequeridos(roles = []) {
   const ROLES_OBLIGATORIOS = [RolEquipo.QA, RolEquipo.TECNICO, RolEquipo.GESTION_PROYECTO];
 
   if (!Array.isArray(roles) || roles.length === 0) {
-    errores.push(new ErrorValidacion('rolesEquipo', 'Se deben asignar los tres roles obligatorios del equipo (QA, Técnico y Gestión de Proyecto).'));
+    errores.push(new ErrorValidacion('rolesEquipo', 'Se deben asignar los tres roles obligatorios del equipo (QA, Líder Técnico y Gestión de Proyecto).'));
+    errores.push(new ErrorValidacion('rol_QA', 'Falta asignar a un integrante para el rol de QA.'));
+    errores.push(new ErrorValidacion('rol_TECNICO', 'Falta asignar a un integrante para el rol de Líder Técnico.'));
+    errores.push(new ErrorValidacion('rol_GESTION_PROYECTO', 'Falta asignar a un integrante para el rol de Gestión de Proyecto.'));
     return errores;
   }
 
   const rolesAsignados = new Map();
   for (const r of roles) {
     const rolNormalizado = (r.role || r.rol || '').toUpperCase();
-    const nombreMiembro = (r.memberName || r.member_name || r.nombre || '').trim();
+    const nombreMiembro = (r.memberName || r.member_name || r.name || r.nombre || '').trim();
     if (rolNormalizado && nombreMiembro) {
       rolesAsignados.set(rolNormalizado, nombreMiembro);
     }
@@ -55,10 +58,10 @@ function validarRolesRequeridos(roles = []) {
 
 function validarRegistro(dto = {}) {
   const erroresGenerales = validarDatosGenerales(dto);
-  const roles = dto.rolesEquipo || dto.teamRoles || [
-    dto.technicalLeadRole ? { role: RolEquipo.TECNICO, name: dto.technicalLeadRole } : null,
-    dto.qaLeadRole ? { role: RolEquipo.QA, name: dto.qaLeadRole } : null,
-    dto.pmRole ? { role: RolEquipo.GESTION_PROYECTO, name: dto.pmRole } : null,
+  const roles = dto.members || dto.rolesEquipo || dto.teamRoles || dto.roles || [
+    dto.technicalLeadRole ? { role: RolEquipo.TECNICO, memberName: dto.technicalLeadRole } : null,
+    dto.qaLeadRole ? { role: RolEquipo.QA, memberName: dto.qaLeadRole } : null,
+    dto.pmRole ? { role: RolEquipo.GESTION_PROYECTO, memberName: dto.pmRole } : null,
   ].filter(Boolean);
 
   const erroresRoles = validarRolesRequeridos(roles);

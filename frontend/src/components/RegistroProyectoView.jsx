@@ -132,6 +132,12 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
 
     const klocNum = estimatedKloc === '' ? null : Number(estimatedKloc);
 
+    const listaIntegrantes = integrantes.map((m) => ({
+      role: m.role,
+      memberName: (m.memberName || '').trim(),
+      email: (m.email || '').trim(),
+    }));
+
     const payload = {
       name: nombre.trim(),
       description: descripcion.trim(),
@@ -139,11 +145,8 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
       projectType: tipoProyecto,
       estimatedKloc: klocNum,
       periodId: periodoActivo ? periodoActivo.id : undefined,
-      members: integrantes.map((m) => ({
-        role: m.role,
-        memberName: (m.memberName || '').trim(),
-        email: (m.email || '').trim(),
-      })),
+      members: listaIntegrantes,
+      rolesEquipo: listaIntegrantes,
     };
 
     try {
@@ -300,7 +303,7 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
           }`}
         >
           <div className="flex items-center justify-between">
-            <span>{mensaje.texto}</span>
+            <span className="font-bold">{mensaje.texto}</span>
             <button
               type="button"
               onClick={() => setMensaje(null)}
@@ -309,6 +312,16 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
               ✕ Cerrar
             </button>
           </div>
+          {errores.length > 0 && (
+            <div className="mt-3 border-t border-red-200 pt-2 text-xs">
+              <span className="font-bold text-red-900">Detalle de validaciones pendientes:</span>
+              <ul className="mt-1 list-disc pl-5 space-y-1 text-red-800">
+                {errores.map((err, i) => (
+                  <li key={i}>{err.mensaje}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
@@ -637,14 +650,18 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
           </div>
 
           {/* Tarjeta de Asignación Dinámica de Integrantes (FA-02.02) */}
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className={`rounded-xl border bg-white p-6 shadow-sm transition ${
+            (errores.some((e) => e.campo === 'rolesEquipo' || e.campo.startsWith('rol_')) || (errores.length > 0 && (!tieneQA || !tieneTecnico || !tieneGestion)))
+              ? 'border-red-400 ring-2 ring-red-100'
+              : 'border-slate-200'
+          }`}>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 mb-4">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">
                   2. Asignación de Roles del Equipo de Trabajo
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Es mandatorio asignar al menos un integrante a cada rol obligatorio: <strong>QA</strong>, <strong>Líder Técnico</strong> y <strong>Gestión de Proyecto</strong> (FA-02.02).
+                  Es mandatorio asignar al menos un integrante con nombre a cada rol obligatorio: <strong>QA</strong>, <strong>Líder Técnico</strong> y <strong>Gestión de Proyecto</strong> (FA-02.02).
                 </p>
               </div>
 
@@ -669,58 +686,90 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
               </div>
             </div>
 
+            {/* Checklist visual de roles en tiempo real */}
+            <div className="mb-4 flex flex-wrap gap-2">
+              <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition ${
+                tieneQA
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  : 'bg-red-100 text-red-800 border border-red-300 animate-pulse'
+              }`}>
+                {tieneQA ? '✔ QA Asignado' : '✖ Falta asignar: QA'}
+              </span>
+              <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition ${
+                tieneTecnico
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  : 'bg-red-100 text-red-800 border border-red-300 animate-pulse'
+              }`}>
+                {tieneTecnico ? '✔ Líder Técnico Asignado' : '✖ Falta asignar: Líder Técnico'}
+              </span>
+              <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition ${
+                tieneGestion
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  : 'bg-red-100 text-red-800 border border-red-300 animate-pulse'
+              }`}>
+                {tieneGestion ? '✔ Gestión de Proyecto Asignado' : '✖ Falta asignar: Gestión de Proyecto'}
+              </span>
+            </div>
+
             {/* Alertas de error de roles */}
-            {(errorDe('rol_QA').length > 0 || errorDe('rol_TECNICO').length > 0 || errorDe('rol_GESTION_PROYECTO').length > 0) && (
+            {(errorDe('rolesEquipo').length > 0 || errorDe('rol_QA').length > 0 || errorDe('rol_TECNICO').length > 0 || errorDe('rol_GESTION_PROYECTO').length > 0) && (
               <div className="mb-4 rounded-lg bg-red-50 p-3 text-xs text-red-800 border border-red-200">
                 <strong>Roles faltantes requeridos por el estándar:</strong>
-                <ul className="mt-1 list-disc pl-5">
-                  {errorDe('rol_QA').map((e, i) => <li key={i}>{e.mensaje}</li>)}
-                  {errorDe('rol_TECNICO').map((e, i) => <li key={i}>{e.mensaje}</li>)}
-                  {errorDe('rol_GESTION_PROYECTO').map((e, i) => <li key={i}>{e.mensaje}</li>)}
+                <ul className="mt-1 list-disc pl-5 space-y-1">
+                  {errorDe('rolesEquipo').map((e, i) => <li key={`re-${i}`}>{e.mensaje}</li>)}
+                  {errorDe('rol_QA').map((e, i) => <li key={`qa-${i}`}>{e.mensaje}</li>)}
+                  {errorDe('rol_TECNICO').map((e, i) => <li key={`tec-${i}`}>{e.mensaje}</li>)}
+                  {errorDe('rol_GESTION_PROYECTO').map((e, i) => <li key={`ges-${i}`}>{e.mensaje}</li>)}
                 </ul>
               </div>
             )}
 
             {/* Listado dinámico de integrantes */}
             {integrantes.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center bg-slate-50/50">
-                <p className="text-sm font-medium text-slate-600">No has agregado integrantes al equipo todavía.</p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Haz clic en <strong>"+ Agregar Integrante"</strong> o en <strong>"⚡ Rellenar con Datos de Ejemplo Rápidos"</strong> para completar el equipo.
+              <div className="rounded-lg border border-dashed border-red-300 p-8 text-center bg-red-50/30">
+                <p className="text-sm font-bold text-red-700">No has agregado integrantes al equipo todavía.</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Haz clic en <strong>"+ Agregar Integrante"</strong> o en <strong>"⚡ Rellenar con Datos de Ejemplo Rápidos"</strong> para completar los 3 roles obligatorios.
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
-                {integrantes.map((item, idx) => (
-                  <div
-                    key={item.id}
-                    className="flex flex-col sm:flex-row items-center gap-3 rounded-lg border border-slate-200 bg-slate-50/50 p-3"
-                  >
-                    <span className="text-xs font-bold text-slate-400 w-6 text-center">#{idx + 1}</span>
+                {integrantes.map((item, idx) => {
+                  const nombreVacio = !item.memberName || !item.memberName.trim();
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex flex-col sm:flex-row items-center gap-3 rounded-lg border border-slate-200 bg-slate-50/50 p-3"
+                    >
+                      <span className="text-xs font-bold text-slate-400 w-6 text-center">#{idx + 1}</span>
 
-                    {/* Selector de Rol */}
-                    <div className="w-full sm:w-48">
-                      <select
-                        value={item.role}
-                        onChange={(e) => handleActualizarIntegrante(item.id, 'role', e.target.value)}
-                        className="w-full rounded-md border border-slate-300 bg-white p-2 text-xs font-semibold shadow-xs"
-                      >
-                        {ROLES_DISPONIBLES.map((r) => (
-                          <option key={r.valor} value={r.valor}>{r.etiqueta}</option>
-                        ))}
-                      </select>
-                    </div>
+                      {/* Selector de Rol */}
+                      <div className="w-full sm:w-48">
+                        <select
+                          value={item.role}
+                          onChange={(e) => handleActualizarIntegrante(item.id, 'role', e.target.value)}
+                          className="w-full rounded-md border border-slate-300 bg-white p-2 text-xs font-semibold shadow-xs"
+                        >
+                          {ROLES_DISPONIBLES.map((r) => (
+                            <option key={r.valor} value={r.valor}>{r.etiqueta}</option>
+                          ))}
+                        </select>
+                      </div>
 
-                    {/* Nombre del Integrante */}
-                    <div className="w-full sm:flex-1">
-                      <input
-                        type="text"
-                        value={item.memberName}
-                        onChange={(e) => handleActualizarIntegrante(item.id, 'memberName', e.target.value)}
-                        placeholder="Nombre completo del integrante *"
-                        className="w-full rounded-md border border-slate-300 p-2 text-xs shadow-xs focus:border-blue-500 bg-white"
-                      />
-                    </div>
+                      {/* Nombre del Integrante */}
+                      <div className="w-full sm:flex-1">
+                        <input
+                          type="text"
+                          value={item.memberName}
+                          onChange={(e) => handleActualizarIntegrante(item.id, 'memberName', e.target.value)}
+                          placeholder="Nombre completo del integrante *"
+                          className={`w-full rounded-md border p-2 text-xs shadow-xs focus:border-blue-500 bg-white ${
+                            errores.length > 0 && nombreVacio
+                              ? 'border-red-500 bg-red-50'
+                              : 'border-slate-300'
+                          }`}
+                        />
+                      </div>
 
                     {/* Email opcional */}
                     <div className="w-full sm:w-56">
@@ -743,9 +792,10 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
                       ✕
                     </button>
                   </div>
-                ))}
-              </div>
-            )}
+                );
+              })}
+            </div>
+          )}
           </div>
 
           {/* Sección de Previsualización Interactiva del Plan SQA Propuesto (FN-03) */}

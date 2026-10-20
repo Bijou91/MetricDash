@@ -42,7 +42,7 @@ async function registrarProyecto(dto = {}) {
   }
 
   // Extraer roles asignados
-  const rolesRaw = dto.rolesEquipo || dto.teamRoles || [];
+  const rolesRaw = dto.members || dto.rolesEquipo || dto.teamRoles || dto.roles || [];
   let techLead = dto.technicalLeadRole || '';
   let qaLead = dto.qaLeadRole || '';
   let pmLead = dto.pmRole || '';
