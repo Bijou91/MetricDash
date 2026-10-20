@@ -207,6 +207,20 @@ async function eliminarProyecto(proyectoId) {
   return rowCount > 0;
 }
 
+// CU-03: corte vigente (el de mayor número) donde se registran los defectos.
+async function obtenerCorteActual(proyectoId, tx = pool) {
+  const { rows } = await tx.query(
+    `SELECT * FROM evaluation_cutoffs WHERE project_id = $1 ORDER BY cutoff_number DESC LIMIT 1`,
+    [proyectoId],
+  );
+  return rows[0] ?? null;
+}
+
+// CU-03 FN-05: marca el proyecto como actualizado tras recalcular sus indicadores.
+async function actualizar(proyectoId, tx = pool) {
+  await tx.query('UPDATE monitored_projects SET updated_at = now() WHERE id = $1', [proyectoId]);
+}
+
 module.exports = {
   obtenerActivo,
   obtenerPeriodoActivo,
@@ -219,5 +233,7 @@ module.exports = {
   actualizarEstadoActividad,
   eliminarProyecto,
   guardarProyectoCompleto,
+  obtenerCorteActual,
+  actualizar,
 };
 

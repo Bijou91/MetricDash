@@ -69,4 +69,29 @@ async function insertarVersion(config, tx) {
   );
 }
 
-module.exports = { obtenerVigente, obtenerUltimaVersion, desactivarVigente, insertarVersion };
+// CU-03 FN-06: umbral vigente de una métrica, o null si el proyecto no tiene configuración (precondición 3).
+async function obtenerUmbralVigente(proyectoId, tipo) {
+  const config = await obtenerVigente(proyectoId);
+  return config?.metricas.find((m) => m.tipo === tipo) ?? null;
+}
+
+// CU-03 FN-05: una medición por corte (ER: quality_metrics 1 a 1 con evaluation_cutoffs).
+async function guardarMedicion(corteId, medicion, tx = pool) {
+  await tx.query(
+    `INSERT INTO quality_metrics (cutoff_id, defect_density, health_status, calculated_at)
+     VALUES ($1, $2, $3, now())
+     ON CONFLICT (cutoff_id) DO UPDATE
+       SET defect_density = EXCLUDED.defect_density, health_status = EXCLUDED.health_status, calculated_at = now()`,
+    [corteId, medicion.valorCalculado, medicion.estadoSemaforo],
+  );
+}
+
+async function obtenerMedicion(corteId) {
+  const { rows } = await pool.query('SELECT * FROM quality_metrics WHERE cutoff_id = $1', [corteId]);
+  return rows[0] ?? null;
+}
+
+module.exports = {
+  obtenerVigente, obtenerUltimaVersion, desactivarVigente, insertarVersion,
+  obtenerUmbralVigente, guardarMedicion, obtenerMedicion,
+};

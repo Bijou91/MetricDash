@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const metricasRouter = require('./controllers/MetricasController');
 const proyectoRouter = require('./controllers/ProyectoController');
+const defectoRouter = require('./controllers/DefectoController');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -26,6 +27,7 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api', proyectoRouter);
 app.use('/api', metricasRouter);
+app.use('/api', defectoRouter);
 
 
 app.listen(PORT, '0.0.0.0', () => {

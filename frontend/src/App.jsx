@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import RegistroProyectoView from './views/RegistroProyectoView';
 import ConfigMetricasView from './views/ConfigMetricasView';
+import VistaTableroDefecto from './views/VistaTableroDefecto';
 import * as proyectosApi from './api/ProyectosApiClient';
 
 export default function App() {
   const [apiStatus, setApiStatus] = useState('Verificando conexión con el backend...');
-  const [tabActiva, setTabActiva] = useState('cu01'); // 'cu01' | 'cu02'
+  const [tabActiva, setTabActiva] = useState('cu01'); // 'cu01' | 'cu02' | 'cu03'
   const [proyectoActivo, setProyectoActivo] = useState(null);
 
   useEffect(() => {
@@ -70,6 +71,17 @@ export default function App() {
           >
             Métricas de Calidad y Umbrales
           </button>
+          <button
+            type="button"
+            onClick={() => setTabActiva('cu03')}
+            className={`border-b-2 pb-2.5 text-sm font-semibold transition-colors ${
+              tabActiva === 'cu03'
+                ? 'border-blue-700 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Registro de Defectos
+          </button>
         </nav>
       </header>
 
@@ -90,6 +102,12 @@ export default function App() {
             )}
             <ConfigMetricasView proyectoId={proyectoId} />
           </div>
+        )}
+
+        {tabActiva === 'cu03' && (
+          proyectoActivo
+            ? <VistaTableroDefecto proyectoId={proyectoActivo.id} />
+            : <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-800">Registre primero el proyecto del periodo (CU-01).</p>
         )}
       </main>
     </div>

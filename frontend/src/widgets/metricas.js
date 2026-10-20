@@ -1,8 +1,11 @@
+const AYUDA_MENOR = 'Menos es mejor: el crítico es el valor más alto (meta < advertencia < crítico).';
+const AYUDA_MAYOR = 'Más es mejor: el crítico es el valor más bajo (meta > advertencia > crítico), entre 0 y 100.';
+
 export const ETIQUETAS = {
-  DENSIDAD_DEFECTOS: { nombre: 'Densidad de defectos', unidad: 'defectos/KLOC', ayuda: 'Menor es mejor: meta < advertencia < crítico' },
-  COBERTURA_PRUEBAS: { nombre: 'Cobertura de pruebas', unidad: '%', ayuda: 'Mayor es mejor: meta > advertencia > crítico (0-100)' },
-  TASA_EXITO_PRUEBAS: { nombre: 'Tasa de éxito de pruebas', unidad: '%', ayuda: 'Mayor es mejor: meta > advertencia > crítico (0-100)' },
-  CUMPLIMIENTO_SQA: { nombre: 'Cumplimiento de actividades SQA', unidad: '%', ayuda: 'Mayor es mejor: meta > advertencia > crítico (0-100)' },
+  DENSIDAD_DEFECTOS: { nombre: 'Densidad de defectos', unidad: 'defectos/KLOC', ayuda: AYUDA_MENOR },
+  COBERTURA_PRUEBAS: { nombre: 'Cobertura de pruebas', unidad: '%', ayuda: AYUDA_MAYOR },
+  TASA_EXITO_PRUEBAS: { nombre: 'Tasa de éxito de pruebas', unidad: '%', ayuda: AYUDA_MAYOR },
+  CUMPLIMIENTO_SQA: { nombre: 'Cumplimiento de actividades SQA', unidad: '%', ayuda: AYUDA_MAYOR },
 };
 
 export const CAMPOS = [
