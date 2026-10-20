@@ -251,6 +251,12 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
 
   const errorDe = (campo) => errores.filter((e) => e.campo === campo);
 
+  // Verificación de los 3 roles obligatorios en tiempo real
+  const rolesPresentes = new Set(integrantes.map((i) => i.role));
+  const tieneQA = rolesPresentes.has('QA');
+  const tieneTecnico = rolesPresentes.has('TECNICO');
+  const tieneGestion = rolesPresentes.has('GESTION_PROYECTO');
+
   if (cargando) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-slate-500 shadow-sm">
