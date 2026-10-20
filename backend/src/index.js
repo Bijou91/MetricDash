@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const pool = require('./db/pool');
 const metricasRouter = require('./controllers/MetricasController');
+const proyectoRouter = require('./controllers/ProyectoController');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -26,7 +27,9 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.use('/api', proyectoRouter);
 app.use('/api', metricasRouter);
+
 
 pool.query(fs.readFileSync(path.join(__dirname, 'db/schema.sql'), 'utf8'))
   .then(() => {
