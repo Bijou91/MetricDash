@@ -56,25 +56,25 @@ export default function TableroInicialWidget({ tablero, lineaBase }) {
         </h4>
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded border border-slate-200 bg-slate-50/60 p-2.5 text-center">
-            <span className="text-xs font-medium text-slate-600">Densidad Defectos</span>
+            <span className="text-xs font-medium text-slate-600">Densidad de Defectos</span>
             <div className="mt-1 text-sm font-bold text-slate-400">0.0 def/KLOC</div>
             <span className="mt-1 inline-block rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">SIN_DATOS</span>
           </div>
 
           <div className="rounded border border-slate-200 bg-slate-50/60 p-2.5 text-center">
-            <span className="text-xs font-medium text-slate-600">Eficacia Remoción</span>
+            <span className="text-xs font-medium text-slate-600">Cobertura de Pruebas</span>
             <div className="mt-1 text-sm font-bold text-slate-400">0.0%</div>
             <span className="mt-1 inline-block rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">SIN_DATOS</span>
           </div>
 
           <div className="rounded border border-slate-200 bg-slate-50/60 p-2.5 text-center">
-            <span className="text-xs font-medium text-slate-600">Cobertura Pruebas</span>
+            <span className="text-xs font-medium text-slate-600">Tasa de Éxito de Pruebas</span>
             <div className="mt-1 text-sm font-bold text-slate-400">0.0%</div>
             <span className="mt-1 inline-block rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">SIN_DATOS</span>
           </div>
 
           <div className="rounded border border-slate-200 bg-slate-50/60 p-2.5 text-center">
-            <span className="text-xs font-medium text-slate-600">Cumplimiento Estándares</span>
+            <span className="text-xs font-medium text-slate-600">Cumplimiento Actividades SQA</span>
             <div className="mt-1 text-sm font-bold text-slate-400">0.0%</div>
             <span className="mt-1 inline-block rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">SIN_DATOS</span>
           </div>
