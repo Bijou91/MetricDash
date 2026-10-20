@@ -105,14 +105,23 @@ async function guardarProyectoCompleto({ proyecto, roles, actividades, lineaBase
     miembrosGuardados.push(mRows[0]);
   }
 
+function normalizarEstadoActividad(st) {
+  if (!st) return 'PLANNED';
+  const val = String(st).toUpperCase();
+  if (val === 'REALIZADA' || val === 'DONE') return 'DONE';
+  if (val === 'EN_CURSO' || val === 'IN_PROGRESS') return 'IN_PROGRESS';
+  return 'PLANNED';
+}
+
   // 3. Insertar actividades SQA
   const actividadesGuardadas = [];
   for (const act of actividades) {
+    const statusNorm = normalizarEstadoActividad(act.status);
     const { rows: aRows } = await client.query(
       `INSERT INTO sqa_activities (project_id, title, category, iso_practice_ref, phase, responsible_role, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [proyectoId, act.title, act.category, act.iso_practice_ref, act.phase, act.responsible_role, act.status],
+      [proyectoId, act.title, act.category, act.iso_practice_ref, act.phase, act.responsible_role, statusNorm],
     );
     actividadesGuardadas.push(aRows[0]);
   }
@@ -169,12 +178,13 @@ async function obtenerCorteInicial(proyectoId) {
 
 // Actualizar estado de una actividad SQA (PLANNED, IN_PROGRESS, DONE)
 async function actualizarEstadoActividad(actividadId, status) {
+  const statusNorm = normalizarEstadoActividad(status);
   const { rows } = await pool.query(
     `UPDATE sqa_activities 
         SET status = $1, execution_date = CASE WHEN $1 = 'DONE' THEN CURRENT_DATE ELSE execution_date END
       WHERE id = $2 
       RETURNING *`,
-    [status, actividadId],
+    [statusNorm, actividadId],
   );
   if (rows[0]) {
     // Actualizar conteo de ejecutadas en evaluation_cutoffs

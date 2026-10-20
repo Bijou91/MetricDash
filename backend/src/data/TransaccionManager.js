@@ -13,7 +13,7 @@ async function ejecutar(operacion) {
   } catch (err) {
     if (tx) await rollback(tx);
     console.error('[TransaccionManager]', err);
-    throw new ErrorPersistencia('No se pudo guardar la configuración. Intente de nuevo.');
+    throw new ErrorPersistencia(err.message || 'No se pudo guardar la información. Intente de nuevo.');
   } finally {
     tx?.release();
   }
