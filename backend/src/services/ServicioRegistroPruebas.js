@@ -217,8 +217,9 @@ async function registrar(proyectoId, dto = {}) {
     };
   }
 
-  // D4-A: si ya existe densidad de defectos medida en el corte, considerar su estado para no degradar/sobrescribir un ROJO previo en el tablero.
+  // D4-A: si ya existe densidad de defectos o cumplimiento SQA medido en el corte, considerar su estado para no degradar/sobrescribir un ROJO previo en el tablero.
   let estadoDensidadExistente = null;
+  let estadoCumplimientoExistente = null;
   if (typeof configRepo.obtenerMedicion === 'function') {
     const medicionPrevia = await configRepo.obtenerMedicion(corteSeleccionado.id);
     if (medicionPrevia && medicionPrevia.defect_density != null) {
@@ -230,12 +231,22 @@ async function registrar(proyectoId, dto = {}) {
         );
       }
     }
+    if (medicionPrevia && medicionPrevia.sqa_compliance_pct != null) {
+      const umbralCumplimiento = await configRepo.obtenerUmbralVigente(proyectoId, TipoMetrica.CUMPLIMIENTO_SQA);
+      if (umbralCumplimiento) {
+        estadoCumplimientoExistente = evaluarMetricas.determinarEstadoSemaforo(
+          Number(medicionPrevia.sqa_compliance_pct),
+          umbralCumplimiento,
+        );
+      }
+    }
   }
 
   const nivelSemaforoTablero = evaluarMetricas.calcularNivelGlobal(
     estadoCobertura,
     estadoTasaExito,
     estadoDensidadExistente,
+    estadoCumplimientoExistente,
   );
 
   // Actualizar estadoSemaforo que se persistirá en quality_metrics.health_status

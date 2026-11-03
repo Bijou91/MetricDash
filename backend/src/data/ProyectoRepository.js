@@ -308,6 +308,7 @@ module.exports = {
   obtenerActivo,
   obtenerPeriodoActivo,
   obtenerProyectoPeriodoActivo,
+  obtenerProyectoPeriodoActual: obtenerProyectoPeriodoActivo,
   existeProyectoEnPeriodo,
   obtenerMiembros,
   obtenerActividadesQA,
