@@ -1,4 +1,5 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const RAW_URL = import.meta.env.VITE_API_URL;
+const API_URL = RAW_URL ? RAW_URL.replace(/\/+$/, '') : '';
 
 // 400/422 traen un ResultadoValidacionDTO ({ valido: false, errores }); se devuelven en vez de lanzar.
 async function request(path, options) {

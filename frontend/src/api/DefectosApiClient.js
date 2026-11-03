@@ -1,4 +1,5 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const RAW_URL = import.meta.env.VITE_API_URL;
+const API_URL = RAW_URL ? RAW_URL.replace(/\/+$/, '') : '';
 
 // 400 (campos faltantes), 404 (sin proyecto) y 409 (sin umbrales) traen un body que la vista muestra; 500 lanza.
 async function request(path, options) {

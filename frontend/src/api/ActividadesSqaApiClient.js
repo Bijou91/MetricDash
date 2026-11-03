@@ -1,5 +1,5 @@
-const RAW_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-const BASE = RAW_BASE.endsWith('/api') ? RAW_BASE : `${RAW_BASE.replace(/\/+$/, '')}/api`;
+const RAW_BASE = import.meta.env.VITE_API_URL;
+const BASE = RAW_BASE ? (RAW_BASE.endsWith('/api') ? RAW_BASE : `${RAW_BASE.replace(/\/+$/, '')}/api`) : '/api';
 
 async function request(ruta, opciones) {
   let res;

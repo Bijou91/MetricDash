@@ -50,7 +50,7 @@ services:
     container_name: sqa_web
     environment:
       - NODE_ENV=development
-      - VITE_API_URL=http://localhost:${API_PORT:-4000}
+      - VITE_PROXY_TARGET=http://api:4000
     ports:
       - "${WEB_PORT:-3000}:3000"
     volumes:
@@ -62,6 +62,16 @@ services:
       - sqa_network
     # npm install: el volumen anónimo de node_modules no se actualiza solo al agregar dependencias.
     command: sh -c "npm install && npm run dev"
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: sqa_tunnel
+    restart: unless-stopped
+    command: tunnel --url http://web:3000
+    depends_on:
+      - web
+    networks:
+      - sqa_network
 
 volumes:
   pgdata:
