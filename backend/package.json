@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "test": "node --test",
+    "test": "node --test scripts/pruebaCU06.js",
+    "test:integracion": "node scripts/pruebasImplementacion.js",
     "prueba:sintetica": "node scripts/pruebaSinteticaCU02.js",
     "prueba:cu06": "node --test scripts/pruebaCU06.js"
   },
