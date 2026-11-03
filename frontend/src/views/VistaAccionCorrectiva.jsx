@@ -148,8 +148,8 @@ export default function VistaAccionCorrectiva({ proyectoId }) {
 
       setMensajeExito(
         modoEdicion
-          ? 'Acción correctiva replanteada exitosamente (FA-07.01).'
-          : 'Acción correctiva registrada exitosamente en estado abierta (FN-05).'
+          ? 'Acción correctiva replanteada exitosamente.'
+          : 'Acción correctiva registrada exitosamente en estado abierta.'
       );
       limpiarFormulario();
       await cargarDatos();
@@ -158,7 +158,7 @@ export default function VistaAccionCorrectiva({ proyectoId }) {
     }
   }
 
-  // Simular registro de una nueva medición de métrica (FN-07 a FN-09)
+  // Simular registro de una nueva medición de métrica
   async function handleSimularMedicion(e) {
     e.preventDefault();
     if (!valorSimular || isNaN(Number(valorSimular))) {
@@ -175,13 +175,13 @@ export default function VistaAccionCorrectiva({ proyectoId }) {
       const data = res.data;
       if (data.tipoFlujo === 'VERIFICACION_EFICACIA') {
         if (data.eficaz) {
-          setMensajeExito(`¡Eficacia confirmada (FN-08)! ${data.mensaje}`);
+          setMensajeExito(`¡Eficacia confirmada! ${data.mensaje}`);
         } else {
-          setMensajeError(`Verificación de eficacia (FA-07.01): ${data.mensaje}`);
+          setMensajeError(`Verificación de eficacia: ${data.mensaje}`);
         }
       } else if (data.tipoFlujo === 'DETECCION_DETERIORO') {
         if (data.deterioroDetectado) {
-          setMensajeError(`¡Deterioro detectado (FN-01)! Se ha generado una nueva alerta: ${data.alerta?.mensaje}`);
+          setMensajeError(`¡Deterioro detectado! Se ha generado una nueva alerta: ${data.alerta?.mensaje}`);
         } else {
           setMensajeExito(`Medición evaluada: ${data.motivo || 'No se detectó deterioro.'}`);
         }
@@ -202,7 +202,7 @@ export default function VistaAccionCorrectiva({ proyectoId }) {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-black tracking-tight text-blue-900">
-              CU-06: Deterioro y Acciones Correctivas
+              Deterioro y Acciones Correctivas
             </h2>
             <p className="mt-1 text-sm text-slate-600">
               Detección automática de deterioro de calidad, análisis de causas y seguimiento de acciones correctivas con verificación de eficacia.
@@ -233,7 +233,7 @@ export default function VistaAccionCorrectiva({ proyectoId }) {
         </div>
       )}
 
-      {/* SECCIÓN 1: Alertas Visuales Activas de Deterioro (FN-02, FN-03) */}
+      {/* SECCIÓN 1: Alertas Visuales Activas de Deterioro */}
       <div>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -253,7 +253,7 @@ export default function VistaAccionCorrectiva({ proyectoId }) {
               alerta={alerta}
               onIniciarAccion={handleSeleccionarAlerta}
               onPosponer={() => {
-                setMensajeExito('Alerta pospuesta (FA-04.01). Permanecerá activa y pendiente en el tablero.');
+                setMensajeExito('Alerta pospuesta. Permanecerá activa y pendiente en el tablero.');
               }}
             />
           ))
@@ -270,7 +270,7 @@ export default function VistaAccionCorrectiva({ proyectoId }) {
         )}
       </div>
 
-      {/* SECCIÓN 2: Formulario de Creación / Replanteamiento de Acción Correctiva (FN-04, FN-05, FA-07.01) */}
+      {/* SECCIÓN 2: Formulario de Creación / Replanteamiento de Acción Correctiva */}
       <div
         id="formulario-accion-correctiva"
         className={`rounded-lg border p-6 shadow-sm transition-colors ${
@@ -281,8 +281,8 @@ export default function VistaAccionCorrectiva({ proyectoId }) {
           <div>
             <h3 className="text-lg font-bold text-slate-900">
               {modoEdicion
-                ? 'Replantear Acción Correctiva (FA-07.01)'
-                : 'Registrar Acción Correctiva (FN-04)'}
+                ? 'Replantear Acción Correctiva'
+                : 'Registrar Acción Correctiva'}
             </h3>
             <p className="text-xs text-slate-500">
               {modoEdicion
@@ -398,7 +398,7 @@ export default function VistaAccionCorrectiva({ proyectoId }) {
             {/* Responsable */}
             <div>
               <label htmlFor="responsableId-select" className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
-                Responsable del Equipo * (FN-05)
+                Responsable del Equipo *
               </label>
               <select
                 id="responsableId-select"
@@ -452,13 +452,13 @@ export default function VistaAccionCorrectiva({ proyectoId }) {
               onClick={limpiarFormulario}
               className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition"
             >
-              Cancelar / Posponer (FA-04.01)
+              Cancelar / Limpiar
             </button>
             <button
               type="submit"
               className="rounded-md bg-blue-700 px-5 py-2 text-sm font-bold text-white shadow-xs hover:bg-blue-800 transition"
             >
-              {modoEdicion ? 'Actualizar Acción Replanteada' : 'Guardar Acción Correctiva (FN-05)'}
+              {modoEdicion ? 'Actualizar Acción Replanteada' : 'Guardar Acción Correctiva'}
             </button>
           </div>
         </form>
@@ -516,7 +516,7 @@ export default function VistaAccionCorrectiva({ proyectoId }) {
                           onClick={() => handleReplantearAccion(acc)}
                           className="rounded-md bg-amber-600 px-3 py-1 text-xs font-bold text-white shadow-xs hover:bg-amber-700 transition"
                         >
-                          ✎ Replantear Acción (FA-07.01)
+                          ✎ Replantear Acción
                         </button>
                       )}
                       <span className="text-xs text-slate-500">
@@ -538,7 +538,7 @@ export default function VistaAccionCorrectiva({ proyectoId }) {
                     </p>
                   </div>
 
-                  {/* Estado de Verificación de Eficacia (FN-08 / FA-07.01) */}
+                  {/* Estado de Verificación de Eficacia */}
                   <div className="mt-3 border-t border-slate-100 pt-3">
                     {esEficaz ? (
                       <div className="flex items-center gap-2 text-xs font-bold text-green-800">
@@ -550,7 +550,7 @@ export default function VistaAccionCorrectiva({ proyectoId }) {
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <span>⏳ En seguimiento: Su eficacia será verificada automáticamente en la siguiente medición (Vn+1).</span>
+                        <span>⏳ En seguimiento: Su eficacia será verificada automáticamente en la siguiente medición.</span>
                       </div>
                     )}
 
@@ -588,21 +588,21 @@ export default function VistaAccionCorrectiva({ proyectoId }) {
         )}
       </div>
 
-      {/* SECCIÓN 4: Herramienta de Prueba de Eficacia y Mediciones (FN-07 a FN-09) */}
+      {/* SECCIÓN 4: Herramienta de Prueba de Eficacia y Mediciones */}
       <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-5">
         <button
           type="button"
           onClick={() => setSimulandoMetrica(!simulandoMetrica)}
           className="flex w-full items-center justify-between text-left text-xs font-bold uppercase tracking-wider text-blue-900"
         >
-          <span>🧪 Herramienta de Verificación en Vivo: Simular / Registrar Siguiente Medición (FN-07)</span>
+          <span>🧪 Herramienta de Verificación en Vivo: Simular / Registrar Siguiente Medición</span>
           <span>{simulandoMetrica ? '▲ Ocultar' : '▼ Probar Medición'}</span>
         </button>
 
         {simulandoMetrica && (
           <div className="mt-4 border-t border-blue-200 pt-4">
             <p className="text-xs text-slate-600 mb-3">
-              Permite ingresar una nueva medición para observar cómo el sistema evalúa automáticamente el deterioro (FN-01) o verifica la eficacia de una acción correctiva abierta (FN-07/FN-08).
+              Permite ingresar una nueva medición para observar cómo el sistema evalúa automáticamente el deterioro o verifica la eficacia de una acción correctiva abierta.
             </p>
             <form onSubmit={handleSimularMedicion} className="flex flex-wrap items-end gap-3">
               <div>

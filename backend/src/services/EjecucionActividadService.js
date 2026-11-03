@@ -12,6 +12,7 @@ const generadorActa = require('./GeneradorActa');
 const servicioMetricas = require('./ServicioCalculoMetricas');
 const servicioEvaluacionUmbrales = require('./ServicioEvaluacionUmbrales');
 const servicioEvaluarMetricas = require('./ServicioEvaluarMetricas');
+const servicioRegistroMetrica = require('./ServicioRegistroMetrica');
 const { Defecto } = require('./entidades/defecto');
 const { TipoMetrica } = require('./entidades/metricas');
 const { TableroControl } = require('./entidades/pruebas');
@@ -332,6 +333,30 @@ async function cerrarRevision(actividadId, dto = {}) {
       tx,
     );
 
+    if (typeof servicioRegistroMetrica?.registrarMedicion === 'function') {
+      try {
+        await servicioRegistroMetrica.registrarMedicion({
+          proyectoId: proyecto.id,
+          corteId: corte.id,
+          tipoMetrica: TipoMetrica.DENSIDAD_DEFECTOS,
+          valorCalculado: medicionDensidad.valorCalculado,
+          estadoSemaforo: medicionDensidad.estadoSemaforo,
+          nombreCorte: corte.cutoff_name,
+        }, tx);
+        await servicioRegistroMetrica.registrarMedicion({
+          proyectoId: proyecto.id,
+          corteId: corte.id,
+          tipoMetrica: TipoMetrica.CUMPLIMIENTO_SQA,
+          valorCalculado: medicionCumplimiento.valorCalculado,
+          estadoSemaforo: medicionCumplimiento.estadoSemaforo,
+          nombreCorte: corte.cutoff_name,
+        }, tx);
+      } catch (errM) {
+        if (errM instanceof transacciones.ErrorPersistencia || errM.code === '23514') throw errM;
+        console.warn('[EjecucionActividadService] Aviso al procesar metrica CU-06:', errM.message);
+      }
+    }
+
     return {
       acta,
       defectosCreados,
@@ -424,6 +449,22 @@ async function registrarEvidenciaPruebasAuditoria(actividadId, dto = {}) {
       alertaEmitida,
       tx,
     );
+
+    if (typeof servicioRegistroMetrica?.registrarMedicion === 'function') {
+      try {
+        await servicioRegistroMetrica.registrarMedicion({
+          proyectoId: proyecto.id,
+          corteId: corte.id,
+          tipoMetrica: TipoMetrica.CUMPLIMIENTO_SQA,
+          valorCalculado: medicionCumplimiento.valorCalculado,
+          estadoSemaforo: medicionCumplimiento.estadoSemaforo,
+          nombreCorte: corte.cutoff_name,
+        }, tx);
+      } catch (errM) {
+        if (errM instanceof transacciones.ErrorPersistencia || errM.code === '23514') throw errM;
+        console.warn('[EjecucionActividadService] Aviso al procesar metrica CU-06:', errM.message);
+      }
+    }
 
     return {
       medicionCumplimiento,

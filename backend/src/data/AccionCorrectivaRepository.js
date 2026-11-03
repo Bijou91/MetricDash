@@ -101,7 +101,7 @@ async function guardar(dto, tx = pool) {
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      RETURNING *`,
     [
-      dto.alertaId,
+      dto.alertaId || null,
       dto.proyectoId,
       dto.tipoMetrica,
       dto.descripcion,

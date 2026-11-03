@@ -68,7 +68,7 @@ async function registrarOActualizar(dto, tx) {
     // FN-05: Creación de nueva acción correctiva vinculada a la alerta
     accionGuardada = await accionRepo.guardar(
       {
-        alertaId: dto.alertaId,
+        alertaId: dto.alertaId || null,
         proyectoId: dto.proyectoId,
         tipoMetrica: dto.tipoMetrica,
         descripcion: dto.descripcion,

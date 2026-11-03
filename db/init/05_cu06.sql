@@ -41,7 +41,7 @@ CREATE INDEX IF NOT EXISTS ix_quality_alerts_project ON quality_alerts (project_
 -- Acciones correctivas creadas por los usuarios para atender una alerta (FN-04, FN-05, FN-06)
 CREATE TABLE IF NOT EXISTS corrective_actions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  alert_id UUID NOT NULL REFERENCES quality_alerts(id) ON DELETE CASCADE,
+  alert_id UUID REFERENCES quality_alerts(id) ON DELETE SET NULL,
   project_id UUID NOT NULL REFERENCES monitored_projects(id) ON DELETE CASCADE,
   metric_type VARCHAR(30) NOT NULL
     CHECK (metric_type IN ('DENSIDAD_DEFECTOS','COBERTURA_PRUEBAS','TASA_EXITO_PRUEBAS','CUMPLIMIENTO_SQA')),
@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS corrective_actions (
 );
 
 CREATE INDEX IF NOT EXISTS ix_corrective_actions_project ON corrective_actions (project_id, status);
+ALTER TABLE corrective_actions ALTER COLUMN alert_id DROP NOT NULL;
 
 -- Historial de verificaciones de eficacia de cada acción correctiva (FN-08, FA-07.01)
 CREATE TABLE IF NOT EXISTS verification_history (
