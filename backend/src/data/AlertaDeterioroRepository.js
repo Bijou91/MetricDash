@@ -92,6 +92,10 @@ async function actualizar(alertaId, campos = {}, tx = pool) {
     valores.push(campos.mensaje);
     asignaciones.push(`message = $${valores.length}`);
   }
+  if (campos.valorAnterior !== undefined) {
+    valores.push(campos.valorAnterior);
+    asignaciones.push(`previous_value = $${valores.length}`);
+  }
   if (campos.valorActual !== undefined) {
     valores.push(campos.valorActual);
     asignaciones.push(`current_value = $${valores.length}`);
@@ -99,6 +103,10 @@ async function actualizar(alertaId, campos = {}, tx = pool) {
   if (campos.nivelSemaforo !== undefined) {
     valores.push(campos.nivelSemaforo);
     asignaciones.push(`severity_status = $${valores.length}`);
+  }
+  if (campos.posiblesCausas !== undefined) {
+    valores.push(JSON.stringify(campos.posiblesCausas));
+    asignaciones.push(`possible_causes = $${valores.length}::jsonb`);
   }
 
   asignaciones.push('updated_at = now()');

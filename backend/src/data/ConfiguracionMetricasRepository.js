@@ -164,10 +164,11 @@ async function obtenerMedicionesHistoricas(proyectoId, tipoMetrica, limite = 3, 
   }));
 }
 
-// CU-06: Obtiene la medición inmediata anterior (Vn-1) de la métrica
+// CU-06: Obtiene la medición inmediata anterior (Vn-1) de la métrica.
+// Como guardarMedicionHistorica inserta Vn antes de invocar la detección, historial[0] es Vn y historial[1] es Vn-1.
 async function obtenerMedicionAnterior(proyectoId, tipoMetrica, tx = pool) {
   const historial = await obtenerMedicionesHistoricas(proyectoId, tipoMetrica, 2, tx);
-  return historial[0] || null;
+  return historial[1] || null;
 }
 
 module.exports = {

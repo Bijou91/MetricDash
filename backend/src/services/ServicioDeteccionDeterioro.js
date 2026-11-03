@@ -33,17 +33,28 @@ async function evaluarNuevaMedicion(nuevaMedicion, tx) {
     return { deterioroDetectado: false, motivo: 'Métrica sin umbrales configurados.' };
   }
 
-  // Precondición 4: debe existir al menos una medición previa (Vn-1)
+  const estadoActual = evaluarMetricas.determinarEstadoSemaforo(valorActual, umbral);
+  const pesoActual = PESO_SEMAFORO[estadoActual] || 0;
+
+  // Obtener medición previa (Vn-1). Si es la primera medición pero ya cayó en AMARILLO o ROJO,
+  // se evalúa el cruce de umbral respecto a la meta configurada (VERDE_OPTIMO).
   const medicionPrevia = await configRepo.obtenerMedicionAnterior(proyectoId, tipoMetrica, tx);
-  if (!medicionPrevia || medicionPrevia.valor == null) {
-    return { deterioroDetectado: false, motivo: 'No existe medición previa registrada para comparar (primera medición).' };
+  const tieneMedicionPrevia = medicionPrevia && medicionPrevia.valor != null;
+
+  if (!tieneMedicionPrevia && pesoActual <= 1) {
+    return {
+      deterioroDetectado: false,
+      motivo: 'Primera medición registrada en estado óptimo (VERDE).',
+    };
   }
 
-  const valorAnterior = Number(medicionPrevia.valor);
+  const valorAnterior = tieneMedicionPrevia
+    ? Number(medicionPrevia.valor)
+    : Number(umbral.meta);
 
-  // Evaluación de semáforos
-  const estadoAnterior = evaluarMetricas.determinarEstadoSemaforo(valorAnterior, umbral);
-  const estadoActual = evaluarMetricas.determinarEstadoSemaforo(valorActual, umbral);
+  const estadoAnterior = tieneMedicionPrevia
+    ? evaluarMetricas.determinarEstadoSemaforo(valorAnterior, umbral)
+    : NivelSemaforo.VERDE_OPTIMO;
 
   // Condición (a): Vn es peor que Vn-1 según SentidoMetrica
   const esPeorSegunSentido = umbral.sentido === SentidoMetrica.MAYOR_ES_MEJOR
@@ -52,7 +63,6 @@ async function evaluarNuevaMedicion(nuevaMedicion, tx) {
 
   // Condición (b): Vn cruza un umbral (su estado de semáforo es peor que el de Vn-1)
   const pesoAnterior = PESO_SEMAFORO[estadoAnterior] || 0;
-  const pesoActual = PESO_SEMAFORO[estadoActual] || 0;
   const cruzoUmbralPeor = pesoActual > pesoAnterior;
 
   const hayDeterioro = esPeorSegunSentido || cruzoUmbralPeor;
@@ -72,44 +82,79 @@ async function evaluarNuevaMedicion(nuevaMedicion, tx) {
   const posiblesCausas = await causasRepo.obtenerPosiblesCausas(proyectoId, tipoMetrica, tx);
   const ultimasMediciones = await configRepo.obtenerMedicionesHistoricas(proyectoId, tipoMetrica, 3, tx);
 
-  // Construir la tendencia asegurando que incluya Vn y hasta 3 puntos
-  const tendenciaActual = [
-    {
+  // Construir la tendencia asegurando orden cronológico y hasta 3 puntos
+  let tendenciaActual;
+  if (ultimasMediciones.length >= 2) {
+    tendenciaActual = ultimasMediciones.slice(0, 3).reverse();
+    tendenciaActual[tendenciaActual.length - 1] = {
+      ...tendenciaActual[tendenciaActual.length - 1],
       valor: valorActual,
       estadoSemaforo: estadoActual,
-      fecha: new Date(),
-      nombreCorte: nuevaMedicion.nombreCorte || 'Medición actual',
-    },
-    ...ultimasMediciones.filter((m) => Math.abs(m.valor - valorActual) > 0.0001 || m.fecha !== ultimasMediciones[0]?.fecha),
-  ].slice(0, 3).reverse();
+      nombreCorte: nuevaMedicion.nombreCorte || tendenciaActual[tendenciaActual.length - 1].nombreCorte || 'Medición actual',
+    };
+  } else {
+    tendenciaActual = [
+      {
+        valor: valorAnterior,
+        estadoSemaforo: estadoAnterior,
+        fecha: new Date(),
+        nombreCorte: tieneMedicionPrevia ? (medicionPrevia.nombreCorte || 'Medición previa') : 'Meta configurada',
+      },
+      {
+        valor: valorActual,
+        estadoSemaforo: estadoActual,
+        fecha: new Date(),
+        nombreCorte: nuevaMedicion.nombreCorte || ultimasMediciones[0]?.nombreCorte || 'Medición actual',
+      },
+    ];
+  }
 
   const nombre = NOMBRES_METRICA[tipoMetrica] || tipoMetrica;
   const unidad = umbral.unidad === '%' ? '%' : ` ${umbral.unidad}`;
   const motivos = [];
   if (esPeorSegunSentido) {
-    motivos.push(`empeoró de ${valorAnterior}${unidad} a ${valorActual}${unidad}`);
+    const etiquetaPrev = tieneMedicionPrevia ? `${valorAnterior}${unidad}` : `meta de ${valorAnterior}${unidad}`;
+    motivos.push(`cayó de ${etiquetaPrev} a ${valorActual}${unidad}`);
   }
   if (cruzoUmbralPeor) {
-    motivos.push(`cambió de semáforo ${estadoAnterior} a ${estadoActual}`);
+    motivos.push(`pasó a semáforo ${estadoActual}`);
   }
 
   const mensajeAlerta = `Deterioro detectado en ${nombre}: ${motivos.join(' y ')}.`;
 
-  const alerta = new AlertaDeterioro({
-    proyectoId,
-    tipoMetrica,
-    corteId,
-    valorInicial: valorActual, // Vα para verificación de eficacia futura
-    valorAnterior,
-    valorActual,
-    nivelSemaforo: estadoActual,
-    mensaje: mensajeAlerta,
-    tendencia: tendenciaActual,
-    posiblesCausas,
-    estado: 'ACTIVA',
-  });
+  // Evitar duplicar alertas activas para la misma métrica (FA-01.01)
+  const alertaExistente = await alertaRepo.obtenerAlertaActivaPorMetrica(proyectoId, tipoMetrica, tx);
+  let alertaGuardada;
 
-  const alertaGuardada = await alertaRepo.guardar(alerta, tx);
+  if (alertaExistente) {
+    alertaGuardada = await alertaRepo.actualizar(
+      alertaExistente.id,
+      {
+        valorAnterior,
+        valorActual,
+        nivelSemaforo: estadoActual,
+        mensaje: mensajeAlerta,
+        tendencia: tendenciaActual,
+        posiblesCausas,
+      },
+      tx,
+    );
+  } else {
+    const alerta = new AlertaDeterioro({
+      proyectoId,
+      tipoMetrica,
+      corteId,
+      valorInicial: valorActual, // Vα para verificación de eficacia futura
+      valorAnterior,
+      valorActual,
+      nivelSemaforo: estadoActual,
+      mensaje: mensajeAlerta,
+      tendencia: tendenciaActual,
+      posiblesCausas,
+      estado: 'ACTIVA',
+    });
+    alertaGuardada = await alertaRepo.guardar(alerta, tx);
+  }
 
   return {
     deterioroDetectado: true,

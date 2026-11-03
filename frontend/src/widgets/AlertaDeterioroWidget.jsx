@@ -68,7 +68,7 @@ export default function AlertaDeterioroWidget({ alerta, onIniciarAccion, onPospo
               onClick={() => onPosponer(alerta)}
               className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition"
             >
-              Posponer (FA-04.01)
+              Posponer
             </button>
           )}
           {onIniciarAccion && (
@@ -77,7 +77,7 @@ export default function AlertaDeterioroWidget({ alerta, onIniciarAccion, onPospo
               onClick={() => onIniciarAccion(alerta)}
               className="rounded-md bg-blue-700 px-4 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-blue-800 transition"
             >
-              + Crear Acción Correctiva (FN-04)
+              + Crear Acción Correctiva
             </button>
           )}
         </div>
