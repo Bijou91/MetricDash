@@ -2,6 +2,7 @@ const express = require('express');
 const service = require('../services/RegistroProyectoService');
 const proyectoRepo = require('../data/ProyectoRepository');
 const configRepo = require('../data/ConfiguracionMetricasRepository');
+const defectoRepo = require('../data/DefectoRepository');
 const evaluarMetricas = require('../services/ServicioEvaluarMetricas');
 const { TipoMetrica } = require('../services/entidades/metricas');
 const { NivelSemaforo, ProyectoExistenteException } = require('../services/entidades/proyecto');
@@ -11,7 +12,7 @@ function manejarError(res, err) {
   if (err.resultado) {
     return res.status(400).json({
       valido: false,
-      mensaje: 'Datos o roles incompletos (FA-02.02).',
+      mensaje: 'Datos o roles incompletos.',
       errores: err.resultado.errores,
     });
   }
@@ -85,8 +86,17 @@ async function getProyectoActivo(req, res) {
       return u ? evaluarMetricas.determinarEstadoSemaforo(Number(valor), u) : NivelSemaforo.SIN_DATOS;
     };
 
+    const hoyIso = new Date().toISOString().slice(0, 10);
+    const esRealizada = (a) => ['DONE', 'REALIZADA'].includes(String(a.status).toUpperCase());
+    const esVencida = (a) => {
+      if (esRealizada(a) || !a.planned_date) return false;
+      const f = a.planned_date instanceof Date ? a.planned_date.toISOString().slice(0, 10) : String(a.planned_date).slice(0, 10);
+      return f <= hoyIso;
+    };
+
     const totalActs = actividades.length;
-    const ejecutadasActs = actividades.filter((a) => ['DONE', 'REALIZADA'].includes(String(a.status).toUpperCase())).length;
+    const ejecutadasActs = actividades.filter(esRealizada).length;
+    const vencidasActs = actividades.filter(esVencida).length;
     const cumplimientoProyecto = totalActs > 0 ? Math.round((ejecutadasActs / totalActs) * 10000) / 100 : null;
 
     const FASE_POR_CORTE = {
@@ -96,7 +106,20 @@ async function getProyectoActivo(req, res) {
       4: 'INTEGRACION_Y_PRUEBAS',
     };
 
-    let valDensidad = null;
+    const klocProyecto = Number(proyecto.estimated_kloc ?? proyecto.estimatedKloc ?? 1) || 1;
+    let defectosProyecto = [];
+    if (defectoRepo.listarPorProyecto) {
+      try {
+        defectosProyecto = await defectoRepo.listarPorProyecto(proyecto.id);
+      } catch (_) {
+        defectosProyecto = [];
+      }
+    }
+    const defectosActivos = (defectosProyecto || []).filter((d) => d.estado !== 'DESCARTADO');
+
+    let valDensidad = defectosActivos.length > 0
+      ? Math.round((defectosActivos.length / klocProyecto) * 100) / 100
+      : null;
     let valCobertura = null;
     let valTasaExito = null;
     let ultimoHealthStatus = null;
@@ -109,17 +132,24 @@ async function getProyectoActivo(req, res) {
       const faseCorte = FASE_POR_CORTE[numCorte];
       const actsFase = faseCorte ? actividades.filter((a) => a.phase === faseCorte) : [];
       const planeadasCorte = actsFase.length > 0 ? actsFase.length : (c.planned_sqa_acts ?? totalActs);
-      const ejecutadasCorte = actsFase.filter((a) => ['DONE', 'REALIZADA'].includes(String(a.status).toUpperCase())).length;
+      const ejecutadasCorte = actsFase.filter(esRealizada).length;
+      const vencidasCorte = actsFase.filter(esVencida).length;
       const cumplimientoFase = planeadasCorte > 0
         ? Math.round((ejecutadasCorte / planeadasCorte) * 10000) / 100
         : null;
 
-      const denC = m?.defect_density != null ? Number(m.defect_density) : null;
+      const defectosFase = defectosActivos.filter((d) => d.faseDeteccion === faseCorte);
+      const denPorFase = defectosFase.length > 0
+        ? Math.round((defectosFase.length / klocProyecto) * 100) / 100
+        : null;
+      const denC = denPorFase != null
+        ? denPorFase
+        : (m?.defect_density != null ? Number(m.defect_density) : null);
       const cobC = m?.test_coverage_pct != null ? Number(m.test_coverage_pct) : null;
       const tasaC = m?.test_pass_rate_pct != null ? Number(m.test_pass_rate_pct) : null;
       const cumpC = cumplimientoFase;
 
-      if (denC != null) valDensidad = denC;
+      if (valDensidad == null && denC != null) valDensidad = denC;
       if (cobC != null) valCobertura = cobC;
       if (tasaC != null) valTasaExito = tasaC;
       if (m?.health_status && m.health_status !== NivelSemaforo.SIN_DATOS) {
@@ -129,7 +159,7 @@ async function getProyectoActivo(req, res) {
       const estDenC = evaluarSiHay(denC, TipoMetrica.DENSIDAD_DEFECTOS);
       const estCobC = evaluarSiHay(cobC, TipoMetrica.COBERTURA_PRUEBAS);
       const estTasaC = evaluarSiHay(tasaC, TipoMetrica.TASA_EXITO_PRUEBAS);
-      const estCumpC = ejecutadasCorte > 0
+      const estCumpC = (ejecutadasCorte > 0 || vencidasCorte > 0)
         ? evaluarSiHay(cumpC, TipoMetrica.CUMPLIMIENTO_SQA)
         : NivelSemaforo.SIN_DATOS;
 
@@ -149,7 +179,8 @@ async function getProyectoActivo(req, res) {
         kloc: c.kloc,
         planned_sqa_acts: planeadasCorte,
         executed_sqa_acts: ejecutadasCorte,
-        tieneMediciones: Boolean((m && (denC != null || cobC != null || tasaC != null)) || ejecutadasCorte > 0),
+        exigible_sqa_acts: planeadasCorte,
+        tieneMediciones: Boolean((m && (denC != null || cobC != null || tasaC != null)) || ejecutadasCorte > 0 || vencidasCorte > 0),
         health_status: saludCorte !== NivelSemaforo.SIN_DATOS ? saludCorte : NivelSemaforo.SIN_DATOS,
         indicadores: {
           densidadDefectos: { valor: denC, estado: estDenC, unidad: 'def/KLOC' },
@@ -165,7 +196,7 @@ async function getProyectoActivo(req, res) {
     const estDensidad = evaluarSiHay(valDensidad, TipoMetrica.DENSIDAD_DEFECTOS);
     const estCobertura = evaluarSiHay(valCobertura, TipoMetrica.COBERTURA_PRUEBAS);
     const estTasaExito = evaluarSiHay(valTasaExito, TipoMetrica.TASA_EXITO_PRUEBAS);
-    const estCumplimiento = ejecutadasActs > 0
+    const estCumplimiento = (ejecutadasActs > 0 || vencidasActs > 0)
       ? evaluarSiHay(cumplimientoCalc, TipoMetrica.CUMPLIMIENTO_SQA)
       : NivelSemaforo.SIN_DATOS;
     const estadoGlobal = evaluarMetricas.calcularNivelGlobal(
@@ -173,7 +204,6 @@ async function getProyectoActivo(req, res) {
       estCobertura,
       estTasaExito,
       estCumplimiento,
-      ultimoHealthStatus,
     );
 
     const tableroEnriquecido = corteInicial ? {

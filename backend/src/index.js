@@ -5,6 +5,7 @@ const proyectoRouter = require('./controllers/ProyectoController');
 const defectoRouter = require('./controllers/DefectoController');
 const pruebasRouter = require('./controllers/PruebasController');
 const accionCorrectivaRouter = require('./controllers/AccionCorrectivaController');
+const actividadesSqaRouter = require('./controllers/ActividadesSqaController');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -32,6 +33,7 @@ app.use('/api', metricasRouter);
 app.use('/api', defectoRouter);
 app.use('/api', pruebasRouter);
 app.use('/api', accionCorrectivaRouter);
+app.use('/api', actividadesSqaRouter);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[SQA Backend] Servidor ejecutándose en http://0.0.0.0:${PORT}`);

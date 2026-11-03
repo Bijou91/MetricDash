@@ -1,6 +1,6 @@
 -- CU-06: Detección de deterioro y gestión de acciones correctivas
 -- Idempotente: también se aplica a volúmenes ya existentes:
---   docker exec sqa_db psql -U sqa_user -d sqa_dashboard -f /docker-entrypoint-initdb.d/04_cu06.sql
+--   docker exec sqa_db psql -U sqa_user -d sqa_dashboard -f /docker-entrypoint-initdb.d/05_cu06.sql
 
 -- Registro de todas las mediciones para control de tendencia histórica y cálculo de Vn-1
 CREATE TABLE IF NOT EXISTS metric_measurements (

@@ -13,7 +13,7 @@ const ROLES_ETIQUETAS = {
   GESTION_PROYECTO: 'Gestión de Proyecto',
 };
 
-export default function PlanQABaseWidget({ planQA, modoPrevisualizacion = false, onCambiarEstadoActividad }) {
+export default function PlanQABaseWidget({ planQA, modoPrevisualizacion = false, onCambiarEstadoActividad, onGestionarEnCU04 }) {
   const [faseFiltro, setFaseFiltro] = useState('TODAS');
   const [rolFiltro, setRolFiltro] = useState('TODOS');
   const [actualizandoId, setActualizandoId] = useState(null);
@@ -221,37 +221,27 @@ export default function PlanQABaseWidget({ planQA, modoPrevisualizacion = false,
                         {status === 'DONE' ? 'REALIZADA' : status === 'IN_PROGRESS' ? 'EN CURSO' : 'PLANIFICADA'}
                       </span>
                     </td>
-                    {!modoPrevisualizacion && onCambiarEstadoActividad && (
+                    {!modoPrevisualizacion && (onGestionarEnCU04 || onCambiarEstadoActividad) && (
                       <td className="whitespace-nowrap px-3 py-2.5 text-right text-xs">
-                        {status !== 'DONE' && (
+                        {onGestionarEnCU04 ? (
                           <button
                             type="button"
-                            disabled={isUpdating}
-                            onClick={() => handleCambiarEstado(actId, 'DONE')}
-                            className="mr-1 rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                            onClick={() => onGestionarEnCU04(actId)}
+                            className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
                           >
-                            ✔ Realizada
+                            {status === 'DONE' ? '📄 Ver Acta / Detalle' : '⚙ Planificar / Ejecutar'}
                           </button>
-                        )}
-                        {status === 'PLANNED' && (
-                          <button
-                            type="button"
-                            disabled={isUpdating}
-                            onClick={() => handleCambiarEstado(actId, 'IN_PROGRESS')}
-                            className="mr-1 rounded bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
-                          >
-                            ▶ En Curso
-                          </button>
-                        )}
-                        {(status === 'DONE' || status === 'IN_PROGRESS') && (
-                          <button
-                            type="button"
-                            disabled={isUpdating}
-                            onClick={() => handleCambiarEstado(actId, 'PLANNED')}
-                            className="rounded bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-200 disabled:opacity-50"
-                          >
-                            ↺ Planificada
-                          </button>
+                        ) : (
+                          status !== 'DONE' && (
+                            <button
+                              type="button"
+                              disabled={isUpdating}
+                              onClick={() => handleCambiarEstado(actId, 'DONE')}
+                              className="mr-1 rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                            >
+                              ✔ Realizada
+                            </button>
+                          )
                         )}
                       </td>
                     )}

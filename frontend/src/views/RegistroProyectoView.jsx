@@ -16,7 +16,7 @@ const ROLES_DISPONIBLES = [
   { valor: 'DEVELOPER', etiqueta: 'Desarrollador (Developer)' },
 ];
 
-export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02, onIrACU06 }) {
+export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02, onIrACU04, onIrACU06 }) {
   const [periodoActivo, setPeriodoActivo] = useState(null);
   const [proyectoActivo, setProyectoActivo] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -189,7 +189,7 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02, 
     } catch (err) {
       setMensaje({
         tipo: 'error',
-        texto: err.message || 'Error de persistencia en la base de datos (FE-01).',
+        texto: err.message || 'Error de persistencia en la base de datos.',
       });
     } finally {
       setEnviando(false);
@@ -484,10 +484,11 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02, 
             </div>
           </div>
 
-          {/* Plan Base SQA Interactivo con Transiciones de Estado */}
+          {/* Plan Base SQA con enlace directo al CU-04 */}
           <PlanQABaseWidget
             planQA={proyectoActivo.planQA}
             onCambiarEstadoActividad={handleCambiarEstadoActividad}
+            onGestionarEnCU04={onIrACU04}
           />
 
           {/* Tablero Inicial de Control (Corte 1) */}

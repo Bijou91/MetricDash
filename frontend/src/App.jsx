@@ -2,35 +2,47 @@ import React, { useEffect, useState } from 'react';
 import RegistroProyectoView from './views/RegistroProyectoView';
 import ConfigMetricasView from './views/ConfigMetricasView';
 import VistaTableroDefecto from './views/VistaTableroDefecto';
+import GestionActividadesSqaView from './views/GestionActividadesSqaView';
 import VistaRegistroPruebas from './views/VistaRegistroPruebas';
 import VistaAccionCorrectiva from './views/VistaAccionCorrectiva';
 import * as proyectosApi from './api/ProyectosApiClient';
 
 export default function App() {
   const [apiStatus, setApiStatus] = useState('Verificando conexión con el backend...');
-  const [tabActiva, setTabActiva] = useState('cu01'); // 'cu01' | 'cu02' | 'cu03' | 'cu05' | 'cu06'
+  const [tabActiva, setTabActiva] = useState('cu01'); // 'cu01' | 'cu02' | 'cu03' | 'cu04' | 'cu05' | 'cu06'
   const [proyectoActivo, setProyectoActivo] = useState(null);
+  const [actividadSqaFocoId, setActividadSqaFocoId] = useState(null);
+
+  function refrescarProyectoActivo() {
+    proyectosApi.obtenerProyectoPeriodoActivo()
+      .then((data) => {
+        if (data && data.existe) {
+          setProyectoActivo(data.proyecto);
+        } else {
+          setProyectoActivo(null);
+        }
+      })
+      .catch(() => {});
+  }
 
   useEffect(() => {
     proyectosApi.verificarConexion()
       .then((data) => setApiStatus(`Conectado al Backend (${data.status})`))
       .catch(() => setApiStatus('Backend aún no responde'));
 
-    // Consultar si ya existe proyecto activo registrado
-    proyectosApi.obtenerProyectoPeriodoActivo()
-      .then((data) => {
-        if (data && data.existe) {
-          setProyectoActivo(data.proyecto);
-        }
-      })
-      .catch(() => {});
+    refrescarProyectoActivo();
   }, []);
+
+  function cambiarTab(nuevaTab) {
+    setTabActiva(nuevaTab);
+    refrescarProyectoActivo();
+  }
 
   function handleProyectoRegistrado(proyecto) {
     setProyectoActivo(proyecto);
   }
 
-  const proyectoId = proyectoActivo?.id || import.meta.env.VITE_PROYECTO_ID || '00000000-0000-0000-0000-000000000001';
+  const proyectoId = proyectoActivo?.id || import.meta.env.VITE_PROYECTO_ID || '';
 
   return (
     <div className="mx-auto max-w-5xl p-4 font-sans text-slate-800 sm:p-8">
@@ -49,11 +61,11 @@ export default function App() {
           </div>
         </div>
 
-        {/* Barra de Navegación entre Casos de Uso */}
+        {/* Barra de Navegación Principal */}
         <nav className="mt-6 flex flex-wrap gap-3 border-b border-slate-200">
           <button
             type="button"
-            onClick={() => setTabActiva('cu01')}
+            onClick={() => cambiarTab('cu01')}
             className={`border-b-2 pb-2.5 text-sm font-semibold transition-colors ${
               tabActiva === 'cu01'
                 ? 'border-blue-700 text-blue-700'
@@ -64,7 +76,7 @@ export default function App() {
           </button>
           <button
             type="button"
-            onClick={() => setTabActiva('cu02')}
+            onClick={() => cambiarTab('cu02')}
             className={`border-b-2 pb-2.5 text-sm font-semibold transition-colors ${
               tabActiva === 'cu02'
                 ? 'border-blue-700 text-blue-700'
@@ -75,7 +87,7 @@ export default function App() {
           </button>
           <button
             type="button"
-            onClick={() => setTabActiva('cu03')}
+            onClick={() => cambiarTab('cu03')}
             className={`border-b-2 pb-2.5 text-sm font-semibold transition-colors ${
               tabActiva === 'cu03'
                 ? 'border-blue-700 text-blue-700'
@@ -86,7 +98,18 @@ export default function App() {
           </button>
           <button
             type="button"
-            onClick={() => setTabActiva('cu05')}
+            onClick={() => cambiarTab('cu04')}
+            className={`border-b-2 pb-2.5 text-sm font-semibold transition-colors ${
+              tabActiva === 'cu04'
+                ? 'border-blue-700 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Actividades SQA
+          </button>
+          <button
+            type="button"
+            onClick={() => cambiarTab('cu05')}
             className={`border-b-2 pb-2.5 text-sm font-semibold transition-colors ${
               tabActiva === 'cu05'
                 ? 'border-blue-700 text-blue-700'
@@ -97,14 +120,14 @@ export default function App() {
           </button>
           <button
             type="button"
-            onClick={() => setTabActiva('cu06')}
+            onClick={() => cambiarTab('cu06')}
             className={`border-b-2 pb-2.5 text-sm font-semibold transition-colors ${
               tabActiva === 'cu06'
                 ? 'border-blue-700 text-blue-700'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
-            Acciones Correctivas (CU-06)
+            Acciones Correctivas
           </button>
         </nav>
       </header>
@@ -113,31 +136,41 @@ export default function App() {
         {tabActiva === 'cu01' && (
           <RegistroProyectoView
             onProyectoRegistrado={handleProyectoRegistrado}
-            onIrACU02={() => setTabActiva('cu02')}
-            onIrACU06={() => setTabActiva('cu06')}
+            onIrACU02={() => cambiarTab('cu02')}
+            onIrACU04={(actId) => {
+              setActividadSqaFocoId(typeof actId === 'string' ? actId : null);
+              cambiarTab('cu04');
+            }}
+            onIrACU06={() => cambiarTab('cu06')}
           />
         )}
 
         {tabActiva === 'cu02' && (
-          <div>
-            {!proyectoActivo && (
-              <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                <strong>Nota:</strong> No se detectó un proyecto nuevo en la sesión actual; utilizando el ID de proyecto predeterminado.
-              </div>
-            )}
-            <ConfigMetricasView proyectoId={proyectoId} />
-          </div>
-        )}
-
-        {tabActiva === 'cu03' && (
-          proyectoActivo
-            ? <VistaTableroDefecto proyectoId={proyectoActivo.id} />
+          proyectoId
+            ? <ConfigMetricasView proyectoId={proyectoId} />
             : <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-800">Registre primero el proyecto del periodo.</p>
         )}
 
+        {tabActiva === 'cu03' && (
+          proyectoId
+            ? <VistaTableroDefecto proyectoId={proyectoId} />
+            : <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-800">Registre primero el proyecto del periodo.</p>
+        )}
+
+        {tabActiva === 'cu04' && (
+          <GestionActividadesSqaView
+            proyectoId={proyectoId}
+            actividadInicialId={actividadSqaFocoId}
+            onLimpiarActividadInicial={() => setActividadSqaFocoId(null)}
+            onIrACU01={() => cambiarTab('cu01')}
+            onIrACU02={() => cambiarTab('cu02')}
+            onIrACU05={() => cambiarTab('cu05')}
+          />
+        )}
+
         {tabActiva === 'cu05' && (
-          proyectoActivo
-            ? <VistaRegistroPruebas proyectoId={proyectoActivo.id} />
+          proyectoId
+            ? <VistaRegistroPruebas proyectoId={proyectoId} />
             : <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-800">Registre primero el proyecto del periodo.</p>
         )}
 

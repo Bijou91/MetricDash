@@ -151,6 +151,7 @@ module.exports = {
   buscarSimilaresPorProyecto,
   contarDefectosProyecto,
   listarPorProyecto,
+  obtenerPorProyecto: listarPorProyecto,
   obtenerPorId,
   actualizar,
   actualizarEstado,

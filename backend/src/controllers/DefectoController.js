@@ -45,13 +45,37 @@ function manejarError(res, err) {
   return res.status(500).json({ mensaje: 'Error interno del servidor.' });
 }
 
+const FASE_A_CORTE = Object.freeze({
+  ANALISIS_REQUERIMIENTOS: 1,
+  DISENO_COMPONENTES: 2,
+  CONSTRUCCION_SOFTWARE: 3,
+  INTEGRACION_Y_PRUEBAS: 4,
+});
+
+async function resolverCortePorFase(proyectoId, fase, tx) {
+  const numCorte = FASE_A_CORTE[fase] || 1;
+  if (typeof proyectoRepo.listarCortes === 'function') {
+    try {
+      const cortes = await proyectoRepo.listarCortes(proyectoId, tx);
+      const encontrado = Array.isArray(cortes)
+        ? cortes.find((c) => Number(c.cutoff_number) === numCorte)
+        : null;
+      if (encontrado) return encontrado;
+    } catch (_) {
+      // Fallback a obtenerCorteActual
+    }
+  }
+  return proyectoRepo.obtenerCorteActual(proyectoId, tx);
+}
+
 async function calcularSaludGlobalCorte(proyectoId, corteId, medicionDensidad, tx) {
   if (!tx || typeof tx.query !== 'function') return medicionDensidad.estadoSemaforo;
   const previa = await configRepo.obtenerMedicion(corteId, tx);
   if (!previa) return medicionDensidad.estadoSemaforo;
-  const [uCob, uTasa] = await Promise.all([
+  const [uCob, uTasa, uCump] = await Promise.all([
     configRepo.obtenerUmbralVigente(proyectoId, TipoMetrica.COBERTURA_PRUEBAS),
     configRepo.obtenerUmbralVigente(proyectoId, TipoMetrica.TASA_EXITO_PRUEBAS),
+    configRepo.obtenerUmbralVigente(proyectoId, TipoMetrica.CUMPLIMIENTO_SQA),
   ]);
   const estCob = (previa.test_coverage_pct != null && uCob)
     ? servicioEvaluarMetricas.determinarEstadoSemaforo(Number(previa.test_coverage_pct), uCob)
@@ -59,7 +83,10 @@ async function calcularSaludGlobalCorte(proyectoId, corteId, medicionDensidad, t
   const estTasa = (previa.test_pass_rate_pct != null && uTasa)
     ? servicioEvaluarMetricas.determinarEstadoSemaforo(Number(previa.test_pass_rate_pct), uTasa)
     : null;
-  return servicioEvaluarMetricas.calcularNivelGlobal(medicionDensidad.estadoSemaforo, estCob, estTasa);
+  const estCump = (previa.sqa_compliance_pct != null && uCump)
+    ? servicioEvaluarMetricas.determinarEstadoSemaforo(Number(previa.sqa_compliance_pct), uCump)
+    : null;
+  return servicioEvaluarMetricas.calcularNivelGlobal(medicionDensidad.estadoSemaforo, estCob, estTasa, estCump);
 }
 
 // FN-02 a FN-07, FA-03.01, FA-03.02, FA-03.03 y FE-01.
@@ -82,7 +109,7 @@ async function registrarYClasificarDefecto(req, res) {
 
     const responsable = miembros.find((m) => m.id === dto.asignadoAId);
     const { defecto, medicion, alerta, estadoDensidad } = await transacciones.ejecutar(async (tx) => {
-      const corte = await proyectoRepo.obtenerCorteActual(proyectoId, tx);
+      const corte = await resolverCortePorFase(proyectoId, dto.faseDeteccion, tx);
       const defecto = await servicioDefectos.crearYAsignarDefecto(dto, responsable, corte, tx);
       const medicion = await servicioMetricas.recalcularDensidadDefectos(proyecto, tx);
       const alerta = servicioEvaluarMetricas.evaluarSeveridadYDensidad(defecto, medicion, umbral);
