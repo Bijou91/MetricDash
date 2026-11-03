@@ -28,4 +28,4 @@ async function rollback(tx) {
   }
 }
 
-module.exports = { ejecutar, rollback, ErrorPersistencia };
+module.exports = { ejecutar, ejecutarEnTransaccion: ejecutar, rollback, ErrorPersistencia };

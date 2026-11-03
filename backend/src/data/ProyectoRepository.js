@@ -216,6 +216,15 @@ async function obtenerCorteActual(proyectoId, tx = pool) {
   return rows[0] ?? null;
 }
 
+// CU-05 FN-01: lista todos los cortes de evaluación del proyecto ordenados por número de corte.
+async function listarCortes(proyectoId, tx = pool) {
+  const { rows } = await tx.query(
+    `SELECT * FROM evaluation_cutoffs WHERE project_id = $1 ORDER BY cutoff_number ASC`,
+    [proyectoId],
+  );
+  return rows;
+}
+
 // CU-03 FN-05: marca el proyecto como actualizado tras recalcular sus indicadores.
 async function actualizar(proyectoId, tx = pool) {
   await tx.query('UPDATE monitored_projects SET updated_at = now() WHERE id = $1', [proyectoId]);
@@ -234,6 +243,6 @@ module.exports = {
   eliminarProyecto,
   guardarProyectoCompleto,
   obtenerCorteActual,
+  listarCortes,
   actualizar,
 };
-

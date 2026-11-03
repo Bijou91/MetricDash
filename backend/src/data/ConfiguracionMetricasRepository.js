@@ -1,5 +1,12 @@
 const pool = require('./pool');
-const { ConfiguracionMetricas } = require('../services/entidades/metricas');
+const { ConfiguracionMetricas, TipoMetrica } = require('../services/entidades/metricas');
+
+const COLUMNAS_MEDICION = Object.freeze({
+  [TipoMetrica.DENSIDAD_DEFECTOS]: 'defect_density',
+  [TipoMetrica.COBERTURA_PRUEBAS]: 'test_coverage_pct',
+  [TipoMetrica.TASA_EXITO_PRUEBAS]: 'test_pass_rate_pct',
+  [TipoMetrica.CUMPLIMIENTO_SQA]: 'sqa_compliance_pct',
+});
 
 async function obtenerVigente(proyectoId) {
   const { rows } = await pool.query(
@@ -69,29 +76,37 @@ async function insertarVersion(config, tx) {
   );
 }
 
-// CU-03 FN-06: umbral vigente de una métrica, o null si el proyecto no tiene configuración (precondición 3).
+// CU-03 FN-06 / CU-05 FN-05: umbral vigente de una métrica, o null si el proyecto no tiene configuración (precondición 3).
 async function obtenerUmbralVigente(proyectoId, tipo) {
   const config = await obtenerVigente(proyectoId);
   return config?.metricas.find((m) => m.tipo === tipo) ?? null;
 }
 
-// CU-03 FN-05: una medición por corte (ER: quality_metrics 1 a 1 con evaluation_cutoffs).
+// CU-03 FN-05 / CU-05 FN-06: una medición por corte (ER: quality_metrics 1 a 1 con evaluation_cutoffs).
+// Actualiza únicamente la columna asociada al tipo de métrica (o defect_density por defecto para compatibilidad con CU-03).
 async function guardarMedicion(corteId, medicion, tx = pool) {
+  const columna = COLUMNAS_MEDICION[medicion?.tipoMetrica] || 'defect_density';
   await tx.query(
-    `INSERT INTO quality_metrics (cutoff_id, defect_density, health_status, calculated_at)
+    `INSERT INTO quality_metrics (cutoff_id, ${columna}, health_status, calculated_at)
      VALUES ($1, $2, $3, now())
      ON CONFLICT (cutoff_id) DO UPDATE
-       SET defect_density = EXCLUDED.defect_density, health_status = EXCLUDED.health_status, calculated_at = now()`,
+       SET ${columna} = EXCLUDED.${columna}, health_status = EXCLUDED.health_status, calculated_at = now()`,
     [corteId, medicion.valorCalculado, medicion.estadoSemaforo],
   );
 }
 
-async function obtenerMedicion(corteId) {
-  const { rows } = await pool.query('SELECT * FROM quality_metrics WHERE cutoff_id = $1', [corteId]);
+async function obtenerMedicion(corteId, tx = pool) {
+  const { rows } = await tx.query('SELECT * FROM quality_metrics WHERE cutoff_id = $1', [corteId]);
   return rows[0] ?? null;
 }
 
 module.exports = {
-  obtenerVigente, obtenerUltimaVersion, desactivarVigente, insertarVersion,
-  obtenerUmbralVigente, guardarMedicion, obtenerMedicion,
+  COLUMNAS_MEDICION,
+  obtenerVigente,
+  obtenerUltimaVersion,
+  desactivarVigente,
+  insertarVersion,
+  obtenerUmbralVigente,
+  guardarMedicion,
+  obtenerMedicion,
 };

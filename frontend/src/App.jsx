@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import RegistroProyectoView from './views/RegistroProyectoView';
 import ConfigMetricasView from './views/ConfigMetricasView';
 import VistaTableroDefecto from './views/VistaTableroDefecto';
+import VistaRegistroPruebas from './views/VistaRegistroPruebas';
 import * as proyectosApi from './api/ProyectosApiClient';
 
 export default function App() {
   const [apiStatus, setApiStatus] = useState('Verificando conexión con el backend...');
-  const [tabActiva, setTabActiva] = useState('cu01'); // 'cu01' | 'cu02' | 'cu03'
+  const [tabActiva, setTabActiva] = useState('cu01'); // 'cu01' | 'cu02' | 'cu03' | 'cu05'
   const [proyectoActivo, setProyectoActivo] = useState(null);
 
   useEffect(() => {
@@ -48,7 +49,7 @@ export default function App() {
         </div>
 
         {/* Barra de Navegación entre Casos de Uso */}
-        <nav className="mt-6 flex space-x-3 border-b border-slate-200">
+        <nav className="mt-6 flex flex-wrap gap-3 border-b border-slate-200">
           <button
             type="button"
             onClick={() => setTabActiva('cu01')}
@@ -82,6 +83,17 @@ export default function App() {
           >
             Registro de Defectos
           </button>
+          <button
+            type="button"
+            onClick={() => setTabActiva('cu05')}
+            className={`border-b-2 pb-2.5 text-sm font-semibold transition-colors ${
+              tabActiva === 'cu05'
+                ? 'border-blue-700 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Resultados de Pruebas
+          </button>
         </nav>
       </header>
 
@@ -107,6 +119,12 @@ export default function App() {
         {tabActiva === 'cu03' && (
           proyectoActivo
             ? <VistaTableroDefecto proyectoId={proyectoActivo.id} />
+            : <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-800">Registre primero el proyecto del periodo.</p>
+        )}
+
+        {tabActiva === 'cu05' && (
+          proyectoActivo
+            ? <VistaRegistroPruebas proyectoId={proyectoActivo.id} />
             : <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-800">Registre primero el proyecto del periodo.</p>
         )}
       </main>
