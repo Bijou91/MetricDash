@@ -16,7 +16,7 @@ const ROLES_DISPONIBLES = [
   { valor: 'DEVELOPER', etiqueta: 'Desarrollador (Developer)' },
 ];
 
-export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }) {
+export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02, onIrACU06 }) {
   const [periodoActivo, setPeriodoActivo] = useState(null);
   const [proyectoActivo, setProyectoActivo] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -492,6 +492,7 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
 
           {/* Tablero Inicial de Control (Corte 1) */}
           <TableroInicialWidget
+            onIrACU06={onIrACU06}
             tablero={proyectoActivo.tableroInicial}
             lineaBase={proyectoActivo.lineaBase}
           />

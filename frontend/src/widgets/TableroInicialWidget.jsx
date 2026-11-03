@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import * as accionesApi from '../api/AccionesCorrectivasApiClient';
+import AlertaDeterioroWidget from './AlertaDeterioroWidget';
 
 const ESTILOS_ESTADO = {
   VERDE_OPTIMO: { texto: 'ÓPTIMO', badge: 'bg-green-600 text-white', textoValor: 'text-green-700', card: 'border-green-200 bg-green-50/40' },
@@ -23,8 +25,30 @@ function TarjetaIndicador({ titulo, valorTexto, estado = 'SIN_DATOS' }) {
   );
 }
 
-export default function TableroInicialWidget({ tablero, lineaBase }) {
+export default function TableroInicialWidget({ tablero, lineaBase, onIrACU06 }) {
   const [corteSeleccionadoId, setCorteSeleccionadoId] = useState('CONSOLIDADO');
+  const [alertasDeterioro, setAlertasDeterioro] = useState([]);
+  const [accionesSeguimiento, setAccionesSeguimiento] = useState([]);
+
+  const proyectoId = tablero?.project_id || tablero?.proyectoId || lineaBase?.project_id;
+
+  useEffect(() => {
+    if (proyectoId) {
+      accionesApi.obtenerAlertas(proyectoId)
+        .then((res) => {
+          const act = (res.data?.alertas || []).filter((a) => a.estado === 'ACTIVA' || a.estado === 'EN_PROCESO');
+          setAlertasDeterioro(act);
+        })
+        .catch(() => {});
+
+      accionesApi.obtenerAccionesCorrectivas(proyectoId)
+        .then((res) => {
+          const abiertas = (res.data?.acciones || []).filter((a) => a.estado === 'abierta');
+          setAccionesSeguimiento(abiertas);
+        })
+        .catch(() => {});
+    }
+  }, [proyectoId]);
 
   if (!tablero && !lineaBase) return null;
 
@@ -96,9 +120,69 @@ export default function TableroInicialWidget({ tablero, lineaBase }) {
         )}
       </div>
 
+      {/* FN-02: Alertas de Deterioro Visibles en el Tablero */}
+      {alertasDeterioro.length > 0 && (
+        <div className="mt-4">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-red-700 flex items-center gap-1.5">
+              <span>⚠</span> Alertas Activas de Deterioro ({alertasDeterioro.length})
+            </span>
+            {onIrACU06 && (
+              <button
+                type="button"
+                onClick={onIrACU06}
+                className="text-xs font-bold text-blue-700 hover:underline"
+              >
+                Gestionar en Acciones Correctivas ➔
+              </button>
+            )}
+          </div>
+          {alertasDeterioro.map((alerta) => (
+            <AlertaDeterioroWidget
+              key={alerta.id}
+              alerta={alerta}
+              onIniciarAccion={onIrACU06}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* FN-06: Seguimiento de Acciones Correctivas en el Tablero */}
+      {accionesSeguimiento.length > 0 && (
+        <div className="mt-4 rounded-md border border-blue-200 bg-blue-50/60 p-3">
+          <div className="flex items-center justify-between border-b border-blue-200/60 pb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
+              <span>📋</span> Acciones Correctivas en Seguimiento ({accionesSeguimiento.length})
+            </span>
+            {onIrACU06 && (
+              <button
+                type="button"
+                onClick={onIrACU06}
+                className="text-xs font-semibold text-blue-700 hover:underline"
+              >
+                Ver detalle
+              </button>
+            )}
+          </div>
+          <div className="mt-2 divide-y divide-blue-100">
+            {accionesSeguimiento.map((acc) => (
+              <div key={acc.id} className="py-2 text-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                <div>
+                  <span className="font-bold text-slate-800">[{acc.tipoMetrica}]</span>{' '}
+                  <span className="text-slate-700">{acc.descripcion}</span>
+                </div>
+                <div className="text-slate-500 shrink-0">
+                  Resp: <strong className="text-blue-900">{acc.responsableNombre || 'Asignado'}</strong> | Compromiso: <strong>{acc.fechaCompromiso}</strong> | Estado: <span className="font-bold text-amber-700">{acc.estado}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Resumen rápido del estado de todos los cortes */}
       {cortes.length > 0 && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-slate-100 bg-slate-50/70 px-3 py-2">
+        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-md border border-slate-100 bg-slate-50/70 px-3 py-2">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mr-1">
             Estado por Corte:
           </span>

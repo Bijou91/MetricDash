@@ -6,6 +6,7 @@ const configRepo = require('../data/ConfiguracionMetricasRepository');
 const proyectoRepo = require('../data/ProyectoRepository');
 const tableroRepo = require('../data/TableroControlRepository');
 const transacciones = require('../data/TransaccionManager');
+const servicioRegistroMetrica = require('./ServicioRegistroMetrica');
 const { RondaPruebas, CorteEvaluacion, resultadoRegistroPruebas } = require('./entidades/pruebas');
 const { TipoMetrica, EstadoSemaforo } = require('./entidades/metricas');
 const { ErrorValidacion, NivelSemaforo } = require('./entidades/proyecto');
@@ -256,6 +257,21 @@ async function registrar(proyectoId, dto = {}) {
     const r = await pruebasRepo.guardar(ronda, tx);
     for (const medicion of mediciones) {
       await configRepo.guardarMedicion(corteSeleccionado.id, medicion, tx);
+      if (typeof servicioRegistroMetrica?.registrarMedicion === 'function') {
+        try {
+          await servicioRegistroMetrica.registrarMedicion({
+            proyectoId,
+            corteId: corteSeleccionado.id,
+            tipoMetrica: medicion.tipoMetrica,
+            valorCalculado: medicion.valorCalculado,
+            estadoSemaforo: medicion.tipoMetrica === TipoMetrica.COBERTURA_PRUEBAS ? estadoCobertura : estadoTasaExito,
+            nombreCorte: corteSeleccionado.cutoff_name,
+          }, tx);
+        } catch (errM) {
+          if (errM instanceof transacciones.ErrorPersistencia || errM.code === '23514') throw errM;
+          console.warn('[ServicioRegistroPruebas] Aviso al procesar metrica CU-06:', errM.message);
+        }
+      }
     }
     await tableroRepo.guardar(tablero, tx);
     return r;

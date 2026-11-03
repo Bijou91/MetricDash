@@ -6,6 +6,7 @@ const transacciones = require('../data/TransaccionManager');
 const proyectoRepo = require('../data/ProyectoRepository');
 const defectoRepo = require('../data/DefectoRepository');
 const configRepo = require('../data/ConfiguracionMetricasRepository');
+const servicioRegistroMetrica = require('../services/ServicioRegistroMetrica');
 const { TipoMetrica } = require('../services/entidades/metricas');
 const { NivelSemaforo } = require('../services/entidades/proyecto');
 
@@ -88,6 +89,21 @@ async function registrarYClasificarDefecto(req, res) {
       const estadoDensidad = medicion.estadoSemaforo;
       medicion.estadoSemaforo = await calcularSaludGlobalCorte(proyectoId, corte.id, medicion, tx);
       await configRepo.guardarMedicion(corte.id, medicion, tx);
+      if (typeof servicioRegistroMetrica?.registrarMedicion === 'function') {
+        try {
+          await servicioRegistroMetrica.registrarMedicion({
+            proyectoId,
+            corteId: corte.id,
+            tipoMetrica: TipoMetrica.DENSIDAD_DEFECTOS,
+            valorCalculado: medicion.valorCalculado,
+            estadoSemaforo: estadoDensidad,
+            nombreCorte: corte.cutoff_name,
+          }, tx);
+        } catch (errM) {
+          if (errM instanceof transacciones.ErrorPersistencia || errM.code === '23514') throw errM;
+          console.warn('[DefectoController] Aviso al procesar metrica CU-06:', errM.message);
+        }
+      }
       return { defecto, medicion, alerta, estadoDensidad };
     });
 
@@ -176,6 +192,21 @@ async function actualizarDefecto(req, res) {
       const estadoDensidad = medicion.estadoSemaforo;
       medicion.estadoSemaforo = await calcularSaludGlobalCorte(proyectoId, corte.id, medicion, tx);
       await configRepo.guardarMedicion(corte.id, medicion, tx);
+      if (typeof servicioRegistroMetrica?.registrarMedicion === 'function') {
+        try {
+          await servicioRegistroMetrica.registrarMedicion({
+            proyectoId,
+            corteId: corte.id,
+            tipoMetrica: TipoMetrica.DENSIDAD_DEFECTOS,
+            valorCalculado: medicion.valorCalculado,
+            estadoSemaforo: estadoDensidad,
+            nombreCorte: corte.cutoff_name,
+          }, tx);
+        } catch (errM) {
+          if (errM instanceof transacciones.ErrorPersistencia || errM.code === '23514') throw errM;
+          console.warn('[DefectoController] Aviso al procesar metrica CU-06:', errM.message);
+        }
+      }
       return { defecto: defectoActualizado, medicion, alerta, estadoDensidad };
     });
 
@@ -218,6 +249,21 @@ async function actualizarEstadoDefecto(req, res) {
       const estadoDensidad = medicion.estadoSemaforo;
       medicion.estadoSemaforo = await calcularSaludGlobalCorte(proyectoId, corte.id, medicion, tx);
       await configRepo.guardarMedicion(corte.id, medicion, tx);
+      if (typeof servicioRegistroMetrica?.registrarMedicion === 'function') {
+        try {
+          await servicioRegistroMetrica.registrarMedicion({
+            proyectoId,
+            corteId: corte.id,
+            tipoMetrica: TipoMetrica.DENSIDAD_DEFECTOS,
+            valorCalculado: medicion.valorCalculado,
+            estadoSemaforo: estadoDensidad,
+            nombreCorte: corte.cutoff_name,
+          }, tx);
+        } catch (errM) {
+          if (errM instanceof transacciones.ErrorPersistencia || errM.code === '23514') throw errM;
+          console.warn('[DefectoController] Aviso al procesar metrica CU-06:', errM.message);
+        }
+      }
       return { defecto: defectoActualizado, medicion, alerta, estadoDensidad };
     });
 

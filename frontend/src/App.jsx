@@ -3,11 +3,12 @@ import RegistroProyectoView from './views/RegistroProyectoView';
 import ConfigMetricasView from './views/ConfigMetricasView';
 import VistaTableroDefecto from './views/VistaTableroDefecto';
 import VistaRegistroPruebas from './views/VistaRegistroPruebas';
+import VistaAccionCorrectiva from './views/VistaAccionCorrectiva';
 import * as proyectosApi from './api/ProyectosApiClient';
 
 export default function App() {
   const [apiStatus, setApiStatus] = useState('Verificando conexión con el backend...');
-  const [tabActiva, setTabActiva] = useState('cu01'); // 'cu01' | 'cu02' | 'cu03' | 'cu05'
+  const [tabActiva, setTabActiva] = useState('cu01'); // 'cu01' | 'cu02' | 'cu03' | 'cu05' | 'cu06'
   const [proyectoActivo, setProyectoActivo] = useState(null);
 
   useEffect(() => {
@@ -94,6 +95,17 @@ export default function App() {
           >
             Resultados de Pruebas
           </button>
+          <button
+            type="button"
+            onClick={() => setTabActiva('cu06')}
+            className={`border-b-2 pb-2.5 text-sm font-semibold transition-colors ${
+              tabActiva === 'cu06'
+                ? 'border-blue-700 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Acciones Correctivas (CU-06)
+          </button>
         </nav>
       </header>
 
@@ -102,6 +114,7 @@ export default function App() {
           <RegistroProyectoView
             onProyectoRegistrado={handleProyectoRegistrado}
             onIrACU02={() => setTabActiva('cu02')}
+            onIrACU06={() => setTabActiva('cu06')}
           />
         )}
 
@@ -125,6 +138,12 @@ export default function App() {
         {tabActiva === 'cu05' && (
           proyectoActivo
             ? <VistaRegistroPruebas proyectoId={proyectoActivo.id} />
+            : <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-800">Registre primero el proyecto del periodo.</p>
+        )}
+
+        {tabActiva === 'cu06' && (
+          proyectoActivo
+            ? <VistaAccionCorrectiva proyectoId={proyectoActivo.id} />
             : <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-800">Registre primero el proyecto del periodo.</p>
         )}
       </main>

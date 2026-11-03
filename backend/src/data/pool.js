@@ -1,3 +1,14 @@
-const { Pool } = require('pg');
+let pg;
+try {
+  pg = require('pg');
+} catch (_) {
+  pg = {
+    Pool: class {
+      query() {
+        throw new Error('Módulo pg no disponible en este entorno.');
+      }
+    },
+  };
+}
 
-module.exports = new Pool({ connectionString: process.env.DATABASE_URL });
+module.exports = new pg.Pool({ connectionString: process.env.DATABASE_URL });

@@ -262,6 +262,20 @@ async function actualizarEstadoActividad(actividadId, status) {
            SET sqa_compliance_pct = $2, calculated_at = now()`,
         [corteFase.id, ejecutadasFase > 0 ? cumplimientoFasePct : null],
       );
+      if (ejecutadasFase > 0) {
+        try {
+          const servicioRegistroMetrica = require('../services/ServicioRegistroMetrica');
+          if (typeof servicioRegistroMetrica?.registrarMedicion === 'function') {
+            await servicioRegistroMetrica.registrarMedicion({
+              proyectoId,
+              corteId: corteFase.id,
+              tipoMetrica: 'CUMPLIMIENTO_SQA',
+              valorCalculado: cumplimientoFasePct,
+              nombreCorte: corteFase.cutoff_name,
+            });
+          }
+        } catch (_) {}
+      }
     }
   }
   return rows[0] ?? null;

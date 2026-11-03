@@ -101,6 +101,75 @@ async function obtenerMedicion(corteId, tx = pool) {
   return rows[0] ?? null;
 }
 
+// CU-06: Guarda una medición en la tabla histórica metric_measurements
+async function guardarMedicionHistorica({ proyectoId, corteId = null, tipoMetrica, valor, estadoSemaforo = 'SIN_DATOS' }, tx = pool) {
+  const client = tx && typeof tx.query === 'function' ? tx : pool;
+  try {
+    const { rows } = await client.query(
+      `INSERT INTO metric_measurements (project_id, cutoff_id, metric_type, value, health_status, recorded_at)
+       VALUES ($1, $2, $3, $4, $5, now())
+       RETURNING *`,
+      [proyectoId, corteId, tipoMetrica, valor, estadoSemaforo],
+    );
+    return rows[0];
+  } catch (err) {
+    console.warn('[ConfiguracionMetricasRepository] No se pudo guardar en metric_measurements:', err.message);
+    return null;
+  }
+}
+
+// CU-06: Obtiene las últimas N mediciones históricas de una métrica para calcular la tendencia
+async function obtenerMedicionesHistoricas(proyectoId, tipoMetrica, limite = 3, tx = pool) {
+  const client = tx && typeof tx.query === 'function' ? tx : pool;
+  try {
+    const { rows } = await client.query(
+      `SELECT mm.*, ec.cutoff_name, ec.cutoff_number
+         FROM metric_measurements mm
+         LEFT JOIN evaluation_cutoffs ec ON ec.id = mm.cutoff_id
+        WHERE mm.project_id = $1 AND mm.metric_type = $2
+        ORDER BY mm.recorded_at DESC
+        LIMIT $3`,
+      [proyectoId, tipoMetrica, limite],
+    );
+    if (rows && rows.length > 0) {
+      return rows.map((r) => ({
+        valor: Number(r.value),
+        estadoSemaforo: r.health_status,
+        fecha: r.recorded_at,
+        nombreCorte: r.cutoff_name || (r.cutoff_number ? `CP${r.cutoff_number}` : 'Medición'),
+      }));
+    }
+  } catch (_) {
+    // Fallback a quality_metrics abajo
+  }
+
+  // Fallback a quality_metrics por corte si metric_measurements no existe o está vacía
+  const columna = COLUMNAS_MEDICION[tipoMetrica];
+  if (!columna) return [];
+  const { rows: rowsQM } = await client.query(
+    `SELECT qm.${columna} as valor, qm.health_status, qm.calculated_at as fecha,
+            ec.cutoff_name, ec.cutoff_number
+       FROM quality_metrics qm
+       JOIN evaluation_cutoffs ec ON ec.id = qm.cutoff_id
+      WHERE ec.project_id = $1 AND qm.${columna} IS NOT NULL
+      ORDER BY ec.cutoff_number DESC, qm.calculated_at DESC
+      LIMIT $2`,
+    [proyectoId, limite],
+  );
+  return rowsQM.map((r) => ({
+    valor: Number(r.valor),
+    estadoSemaforo: r.health_status,
+    fecha: r.fecha,
+    nombreCorte: r.cutoff_name || `CP${r.cutoff_number}`,
+  }));
+}
+
+// CU-06: Obtiene la medición inmediata anterior (Vn-1) de la métrica
+async function obtenerMedicionAnterior(proyectoId, tipoMetrica, tx = pool) {
+  const historial = await obtenerMedicionesHistoricas(proyectoId, tipoMetrica, 2, tx);
+  return historial[0] || null;
+}
+
 module.exports = {
   COLUMNAS_MEDICION,
   obtenerVigente,
@@ -110,4 +179,7 @@ module.exports = {
   obtenerUmbralVigente,
   guardarMedicion,
   obtenerMedicion,
+  guardarMedicionHistorica,
+  obtenerMedicionesHistoricas,
+  obtenerMedicionAnterior,
 };
