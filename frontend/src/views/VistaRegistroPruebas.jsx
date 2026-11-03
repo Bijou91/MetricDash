@@ -217,8 +217,8 @@ export default function VistaRegistroPruebas({ proyectoId }) {
     : {
         coberturaPruebas: contexto?.ultimasMediciones?.coberturaPruebas ?? null,
         tasaExitoPruebas: contexto?.ultimasMediciones?.tasaExitoPruebas ?? null,
-        estadoCobertura: evaluacionPrevia?.estadoCobertura ?? (contexto?.ultimasMediciones?.coberturaPruebas != null ? semaforoGlobal : 'SIN_DATOS'),
-        estadoTasaExito: evaluacionPrevia?.estadoTasaExito ?? (contexto?.ultimasMediciones?.tasaExitoPruebas != null ? semaforoGlobal : 'SIN_DATOS'),
+        estadoCobertura: evaluacionPrevia?.estadoCobertura ?? contexto?.ultimasMediciones?.estadoCobertura ?? 'SIN_DATOS',
+        estadoTasaExito: evaluacionPrevia?.estadoTasaExito ?? contexto?.ultimasMediciones?.estadoTasaExito ?? 'SIN_DATOS',
       };
 
   return (

@@ -47,8 +47,18 @@ async function cargarContexto(proyectoId) {
   ]);
 
   const cortesDisponibles = (filasCortes || []).map(aCorteDTO);
-  const corteActual = cortesDisponibles[cortesDisponibles.length - 1] || null;
-  const medicionActual = corteActual ? await configRepo.obtenerMedicion(corteActual.id) : null;
+  // Buscar el último corte que ya tenga mediciones de pruebas, o en su defecto el corte inicial
+  let medicionActual = null;
+  let corteConMedicion = cortesDisponibles[0] || null;
+  for (let i = cortesDisponibles.length - 1; i >= 0; i -= 1) {
+    const m = await configRepo.obtenerMedicion(cortesDisponibles[i].id);
+    if (m && (m.test_coverage_pct != null || m.test_pass_rate_pct != null || m.defect_density != null)) {
+      medicionActual = m;
+      corteConMedicion = cortesDisponibles[i];
+      break;
+    }
+  }
+  const corteActual = corteConMedicion;
 
   return {
     proyecto: {
@@ -83,7 +93,23 @@ async function cargarContexto(proyectoId) {
       coberturaPruebas: medicionActual.test_coverage_pct == null ? null : Number(medicionActual.test_coverage_pct),
       tasaExitoPruebas: medicionActual.test_pass_rate_pct == null ? null : Number(medicionActual.test_pass_rate_pct),
       densidadDefectos: medicionActual.defect_density == null ? null : Number(medicionActual.defect_density),
-      nivelSemaforoGlobal: medicionActual.health_status || NivelSemaforo.SIN_DATOS,
+      estadoCobertura: (medicionActual.test_coverage_pct != null && umbralCobertura)
+        ? evaluarMetricas.determinarEstadoSemaforo(Number(medicionActual.test_coverage_pct), umbralCobertura)
+        : NivelSemaforo.SIN_DATOS,
+      estadoTasaExito: (medicionActual.test_pass_rate_pct != null && umbralTasaExito)
+        ? evaluarMetricas.determinarEstadoSemaforo(Number(medicionActual.test_pass_rate_pct), umbralTasaExito)
+        : NivelSemaforo.SIN_DATOS,
+      nivelSemaforoGlobal: evaluarMetricas.calcularNivelGlobal(
+        (medicionActual.test_coverage_pct != null && umbralCobertura)
+          ? evaluarMetricas.determinarEstadoSemaforo(Number(medicionActual.test_coverage_pct), umbralCobertura)
+          : null,
+        (medicionActual.test_pass_rate_pct != null && umbralTasaExito)
+          ? evaluarMetricas.determinarEstadoSemaforo(Number(medicionActual.test_pass_rate_pct), umbralTasaExito)
+          : null,
+        (medicionActual.defect_density != null && umbralDensidad)
+          ? evaluarMetricas.determinarEstadoSemaforo(Number(medicionActual.defect_density), umbralDensidad)
+          : null,
+      ),
     },
     rondas: rondasPrevias,
   };

@@ -201,6 +201,8 @@ export default function RegistroProyectoView({ onProyectoRegistrado, onIrACU02 }
     try {
       const actualizada = await proyectosApi.actualizarEstadoActividad(actividadId, nuevoEstado);
       if (actualizada) {
+        const info = await proyectosApi.obtenerProyectoPeriodoActivo();
+        if (info && info.existe) { setProyectoActivo(info); return; }
         setProyectoActivo((prev) => {
           if (!prev) return prev;
 

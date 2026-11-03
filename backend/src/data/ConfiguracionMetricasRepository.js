@@ -96,7 +96,8 @@ async function guardarMedicion(corteId, medicion, tx = pool) {
 }
 
 async function obtenerMedicion(corteId, tx = pool) {
-  const { rows } = await tx.query('SELECT * FROM quality_metrics WHERE cutoff_id = $1', [corteId]);
+  const client = tx && typeof tx.query === 'function' ? tx : pool;
+  const { rows } = await client.query('SELECT * FROM quality_metrics WHERE cutoff_id = $1', [corteId]);
   return rows[0] ?? null;
 }
 

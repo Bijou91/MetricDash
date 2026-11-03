@@ -44,6 +44,23 @@ function manejarError(res, err) {
   return res.status(500).json({ mensaje: 'Error interno del servidor.' });
 }
 
+async function calcularSaludGlobalCorte(proyectoId, corteId, medicionDensidad, tx) {
+  if (!tx || typeof tx.query !== 'function') return medicionDensidad.estadoSemaforo;
+  const previa = await configRepo.obtenerMedicion(corteId, tx);
+  if (!previa) return medicionDensidad.estadoSemaforo;
+  const [uCob, uTasa] = await Promise.all([
+    configRepo.obtenerUmbralVigente(proyectoId, TipoMetrica.COBERTURA_PRUEBAS),
+    configRepo.obtenerUmbralVigente(proyectoId, TipoMetrica.TASA_EXITO_PRUEBAS),
+  ]);
+  const estCob = (previa.test_coverage_pct != null && uCob)
+    ? servicioEvaluarMetricas.determinarEstadoSemaforo(Number(previa.test_coverage_pct), uCob)
+    : null;
+  const estTasa = (previa.test_pass_rate_pct != null && uTasa)
+    ? servicioEvaluarMetricas.determinarEstadoSemaforo(Number(previa.test_pass_rate_pct), uTasa)
+    : null;
+  return servicioEvaluarMetricas.calcularNivelGlobal(medicionDensidad.estadoSemaforo, estCob, estTasa);
+}
+
 // FN-02 a FN-07, FA-03.01, FA-03.02, FA-03.03 y FE-01.
 async function registrarYClasificarDefecto(req, res) {
   try {
@@ -63,13 +80,15 @@ async function registrarYClasificarDefecto(req, res) {
     }
 
     const responsable = miembros.find((m) => m.id === dto.asignadoAId);
-    const { defecto, medicion, alerta } = await transacciones.ejecutar(async (tx) => {
+    const { defecto, medicion, alerta, estadoDensidad } = await transacciones.ejecutar(async (tx) => {
       const corte = await proyectoRepo.obtenerCorteActual(proyectoId, tx);
       const defecto = await servicioDefectos.crearYAsignarDefecto(dto, responsable, corte, tx);
       const medicion = await servicioMetricas.recalcularDensidadDefectos(proyecto, tx);
       const alerta = servicioEvaluarMetricas.evaluarSeveridadYDensidad(defecto, medicion, umbral);
+      const estadoDensidad = medicion.estadoSemaforo;
+      medicion.estadoSemaforo = await calcularSaludGlobalCorte(proyectoId, corte.id, medicion, tx);
       await configRepo.guardarMedicion(corte.id, medicion, tx);
-      return { defecto, medicion, alerta };
+      return { defecto, medicion, alerta, estadoDensidad };
     });
 
     return res.status(201).json(resultado({
@@ -77,7 +96,7 @@ async function registrarYClasificarDefecto(req, res) {
       defectoRegistrado: { ...defecto, asignadoNombre: responsable.member_name },
       densidadDefectosActualizada: medicion.valorCalculado,
       totalDefectos: medicion.totalDefectos,
-      nivelSemaforo: medicion.estadoSemaforo,
+      nivelSemaforo: estadoDensidad,
       alertaEmitida: alerta,
     }));
   } catch (err) {
@@ -104,14 +123,29 @@ async function obtenerTablero(req, res) {
       configRepo.obtenerUmbralVigente(proyectoId, TipoMetrica.DENSIDAD_DEFECTOS),
       proyectoRepo.obtenerCorteActual(proyectoId),
     ]);
-    const medicion = corte && await configRepo.obtenerMedicion(corte.id);
+    let medicion = corte && await configRepo.obtenerMedicion(corte.id);
+    if ((!medicion || medicion.defect_density == null) && proyectoRepo.listarCortes) {
+      const todosCortes = await proyectoRepo.listarCortes(proyectoId);
+      for (let i = (todosCortes || []).length - 1; i >= 0; i -= 1) {
+        const m = await configRepo.obtenerMedicion(todosCortes[i].id);
+        if (m && m.defect_density != null) {
+          medicion = m;
+          break;
+        }
+      }
+    }
+    const densidadVal = medicion?.defect_density == null ? null : Number(medicion.defect_density);
+    const nivelDensidad = (densidadVal != null && umbral)
+      ? servicioEvaluarMetricas.determinarEstadoSemaforo(densidadVal, umbral)
+      : (medicion?.health_status ?? NivelSemaforo.SIN_DATOS);
+
     return res.json({
       miembros: miembros.map((m) => ({ id: m.id, nombre: m.member_name, rol: m.role })),
       defectos,
       umbralesConfigurados: Boolean(umbral),
       umbral: umbral && { meta: umbral.meta, umbralAdvertencia: umbral.umbralAdvertencia, umbralCritico: umbral.umbralCritico, unidad: umbral.unidad },
-      densidadDefectos: medicion?.defect_density == null ? null : Number(medicion.defect_density),
-      nivelSemaforo: medicion?.health_status ?? NivelSemaforo.SIN_DATOS,
+      densidadDefectos: densidadVal,
+      nivelSemaforo: nivelDensidad,
     });
   } catch (err) {
     return manejarError(res, err);
@@ -134,13 +168,15 @@ async function actualizarDefecto(req, res) {
     const defectoExistente = await defectoRepo.obtenerPorId(defectoId);
     if (!defectoExistente) return res.status(404).json({ mensaje: 'Defecto no encontrado.' });
 
-    const { defecto, medicion, alerta } = await transacciones.ejecutar(async (tx) => {
+    const { defecto, medicion, alerta, estadoDensidad } = await transacciones.ejecutar(async (tx) => {
       const corte = await proyectoRepo.obtenerCorteActual(proyectoId, tx);
       const defectoActualizado = await defectoRepo.actualizar(defectoId, dto, tx);
       const medicion = await servicioMetricas.recalcularDensidadDefectos(proyecto, tx);
       const alerta = servicioEvaluarMetricas.evaluarSeveridadYDensidad(defectoActualizado, medicion, umbral);
+      const estadoDensidad = medicion.estadoSemaforo;
+      medicion.estadoSemaforo = await calcularSaludGlobalCorte(proyectoId, corte.id, medicion, tx);
       await configRepo.guardarMedicion(corte.id, medicion, tx);
-      return { defecto: defectoActualizado, medicion, alerta };
+      return { defecto: defectoActualizado, medicion, alerta, estadoDensidad };
     });
 
     const miembroAsignado = miembros.find((m) => m.id === (defecto.asignadoAId || defectoExistente.asignadoAId));
@@ -150,7 +186,7 @@ async function actualizarDefecto(req, res) {
       defecto: { ...defecto, asignadoNombre: miembroAsignado?.member_name ?? null },
       densidadDefectosActualizada: medicion.valorCalculado,
       totalDefectos: medicion.totalDefectos,
-      nivelSemaforo: medicion.estadoSemaforo,
+      nivelSemaforo: estadoDensidad,
       alertaEmitida: alerta,
     });
   } catch (err) {
@@ -174,13 +210,15 @@ async function actualizarEstadoDefecto(req, res) {
     const defectoExistente = await defectoRepo.obtenerPorId(defectoId);
     if (!defectoExistente) return res.status(404).json({ mensaje: 'Defecto no encontrado.' });
 
-    const { defecto, medicion, alerta } = await transacciones.ejecutar(async (tx) => {
+    const { defecto, medicion, alerta, estadoDensidad } = await transacciones.ejecutar(async (tx) => {
       const corte = await proyectoRepo.obtenerCorteActual(proyectoId, tx);
       const defectoActualizado = await defectoRepo.actualizarEstado(defectoId, estado, notasResolucion, tx);
       const medicion = await servicioMetricas.recalcularDensidadDefectos(proyecto, tx);
       const alerta = servicioEvaluarMetricas.evaluarSeveridadYDensidad(defectoActualizado, medicion, umbral);
+      const estadoDensidad = medicion.estadoSemaforo;
+      medicion.estadoSemaforo = await calcularSaludGlobalCorte(proyectoId, corte.id, medicion, tx);
       await configRepo.guardarMedicion(corte.id, medicion, tx);
-      return { defecto: defectoActualizado, medicion, alerta };
+      return { defecto: defectoActualizado, medicion, alerta, estadoDensidad };
     });
 
     return res.status(200).json({
@@ -188,7 +226,7 @@ async function actualizarEstadoDefecto(req, res) {
       defecto: { ...defecto, asignadoNombre: defectoExistente.asignadoNombre },
       densidadDefectosActualizada: medicion.valorCalculado,
       totalDefectos: medicion.totalDefectos,
-      nivelSemaforo: medicion.estadoSemaforo,
+      nivelSemaforo: estadoDensidad,
       alertaEmitida: alerta,
     });
   } catch (err) {

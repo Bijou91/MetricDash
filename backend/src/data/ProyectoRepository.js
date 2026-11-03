@@ -141,22 +141,57 @@ async function guardarProyectoCompleto({ proyecto, roles, actividades, lineaBase
   );
   const nuevaLineaBase = lbRows[0];
 
-  // 5. Insertar evaluation_cutoffs (Corte CP1 / Tablero inicial)
-  const { rows: cRows } = await client.query(
-    `INSERT INTO evaluation_cutoffs (project_id, cutoff_number, cutoff_name, kloc, planned_sqa_acts, health_status, notes)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     RETURNING *`,
-    [
-      proyectoId,
-      tablero.cutoffNumber || 1,
-      tablero.cutoffName || 'CP1-Baseline',
-      tablero.kloc || proyecto.estimatedKloc,
-      tablero.plannedSqaActs || actividades.length,
-      tablero.healthStatus || 'SIN_DATOS',
-      tablero.mensajeEstado || 'Tablero inicial generado.',
-    ],
-  );
-  const nuevoCorte = cRows[0];
+  // 5. Insertar evaluation_cutoffs (Los 4 cortes de evaluación del periodo: CP1 a CP4 según ER)
+  const klocProyecto = tablero.kloc || proyecto.estimatedKloc;
+  const totalActs = tablero.plannedSqaActs || actividades.length;
+  const contarPorFase = (fase) =>
+    actividades.filter((a) => (a.phase || a.fase) === fase).length;
+  const definicionCortes = [
+    {
+      num: tablero.cutoffNumber || 1,
+      name: tablero.cutoffName || 'CP1-Línea Base Inicial',
+      notes: tablero.mensajeEstado || 'Tablero inicial generado.',
+      plannedActs: contarPorFase('ANALISIS_REQUERIMIENTOS') || totalActs,
+    },
+    {
+      num: 2,
+      name: 'CP2-Diseño de Componentes',
+      notes: 'Segundo corte de evaluación del periodo.',
+      plannedActs: contarPorFase('DISENO_COMPONENTES') || totalActs,
+    },
+    {
+      num: 3,
+      name: 'CP3-Construcción de Software',
+      notes: 'Tercer corte de evaluación del periodo.',
+      plannedActs: contarPorFase('CONSTRUCCION_SOFTWARE') || totalActs,
+    },
+    {
+      num: 4,
+      name: 'CP4-Integración y Pruebas (Final)',
+      notes: 'Corte final de evaluación del periodo.',
+      plannedActs: contarPorFase('INTEGRACION_Y_PRUEBAS') || totalActs,
+    },
+  ];
+
+  const cortesGuardados = [];
+  for (const def of definicionCortes) {
+    const { rows: cRows } = await client.query(
+      `INSERT INTO evaluation_cutoffs (project_id, cutoff_number, cutoff_name, kloc, planned_sqa_acts, health_status, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [
+        proyectoId,
+        def.num,
+        def.name,
+        klocProyecto,
+        def.plannedActs,
+        tablero.healthStatus || 'SIN_DATOS',
+        def.notes,
+      ],
+    );
+    cortesGuardados.push(cRows[0]);
+  }
+  const nuevoCorte = cortesGuardados[0];
 
   return {
     proyecto: nuevoProyecto,
@@ -164,6 +199,7 @@ async function guardarProyectoCompleto({ proyecto, roles, actividades, lineaBase
     actividades: actividadesGuardadas,
     lineaBase: nuevaLineaBase,
     corte: nuevoCorte,
+    cortes: cortesGuardados,
   };
 }
 
@@ -176,7 +212,14 @@ async function obtenerCorteInicial(proyectoId) {
   return rows[0] ?? null;
 }
 
-// Actualizar estado de una actividad SQA (PLANNED, IN_PROGRESS, DONE)
+const FASE_A_NUMERO_CORTE = {
+  ANALISIS_REQUERIMIENTOS: 1,
+  DISENO_COMPONENTES: 2,
+  CONSTRUCCION_SOFTWARE: 3,
+  INTEGRACION_Y_PRUEBAS: 4,
+};
+
+// Actualizar estado de una actividad SQA (PLANNED, IN_PROGRESS, DONE) y recalcular el cumplimiento del corte de su fase
 async function actualizarEstadoActividad(actividadId, status) {
   const statusNorm = normalizarEstadoActividad(status);
   const { rows } = await pool.query(
@@ -187,15 +230,39 @@ async function actualizarEstadoActividad(actividadId, status) {
     [statusNorm, actividadId],
   );
   if (rows[0]) {
-    // Actualizar conteo de ejecutadas en evaluation_cutoffs
-    await pool.query(
-      `UPDATE evaluation_cutoffs
-          SET executed_sqa_acts = (
-            SELECT count(*) FROM sqa_activities WHERE project_id = $1 AND status = 'DONE'
-          )
-        WHERE project_id = $1`,
-      [rows[0].project_id],
+    const { project_id: proyectoId, phase: faseActividad } = rows[0];
+    const cutoffNumber = FASE_A_NUMERO_CORTE[faseActividad] || 1;
+
+    // Recalcular actividades planeadas y ejecutadas específicamente para la fase correspondiente a este corte
+    const { rows: [conteoFase] } = await pool.query(
+      `SELECT count(*)::int AS total,
+              count(*) FILTER (WHERE status = 'DONE')::int AS ejecutadas
+         FROM sqa_activities
+        WHERE project_id = $1 AND phase = $2`,
+      [proyectoId, faseActividad],
     );
+    const ejecutadasFase = conteoFase?.ejecutadas ?? 0;
+    const totalFase = conteoFase?.total ?? 0;
+    const cumplimientoFasePct = totalFase > 0 ? Math.round((ejecutadasFase / totalFase) * 10000) / 100 : 0;
+
+    const { rows: [corteFase] } = await pool.query(
+      `UPDATE evaluation_cutoffs
+          SET planned_sqa_acts = $3,
+              executed_sqa_acts = $4
+        WHERE project_id = $1 AND cutoff_number = $2
+        RETURNING *`,
+      [proyectoId, cutoffNumber, totalFase, ejecutadasFase],
+    );
+
+    if (corteFase) {
+      await pool.query(
+        `INSERT INTO quality_metrics (cutoff_id, sqa_compliance_pct, calculated_at)
+         VALUES ($1, $2, now())
+         ON CONFLICT (cutoff_id) DO UPDATE
+           SET sqa_compliance_pct = $2, calculated_at = now()`,
+        [corteFase.id, ejecutadasFase > 0 ? cumplimientoFasePct : null],
+      );
+    }
   }
   return rows[0] ?? null;
 }
@@ -207,10 +274,17 @@ async function eliminarProyecto(proyectoId) {
   return rowCount > 0;
 }
 
-// CU-03: corte vigente (el de mayor número) donde se registran los defectos.
+// CU-03: corte vigente donde se registran los defectos (el último con mediciones o el corte inicial).
 async function obtenerCorteActual(proyectoId, tx = pool) {
   const { rows } = await tx.query(
-    `SELECT * FROM evaluation_cutoffs WHERE project_id = $1 ORDER BY cutoff_number DESC LIMIT 1`,
+    `SELECT ec.*
+       FROM evaluation_cutoffs ec
+       LEFT JOIN quality_metrics qm ON qm.cutoff_id = ec.id
+      WHERE ec.project_id = $1
+      ORDER BY (qm.id IS NOT NULL) DESC,
+               CASE WHEN qm.id IS NOT NULL THEN ec.cutoff_number ELSE 0 END DESC,
+               ec.cutoff_number ASC
+      LIMIT 1`,
     [proyectoId],
   );
   return rows[0] ?? null;
