@@ -1,4 +1,4 @@
-const { pool } = require('../db/pool');
+const pool = require('../data/pool');
 const { ErrorPersistencia } = require('../domain/errors');
 
 class RepositorioProyecto {
@@ -9,11 +9,19 @@ class RepositorioProyecto {
   async obtenerProyectoActivo(proyectoId) {
     try {
       const res = await this.pool.query(
-        'SELECT * FROM monitored_projects WHERE id = $1 AND active_period = TRUE',
+        `SELECT p.*, a.code as period_code, a.name as period_name
+           FROM monitored_projects p
+           JOIN academic_periods a ON a.id = p.period_id
+          WHERE p.id = $1 AND a.is_active = true`,
         [proyectoId]
       );
       if (res.rows.length === 0) {
-        return null;
+        // Si no coincide con periodo académico activo pero existe el proyecto, devolverlo
+        const resDirect = await this.pool.query(
+          'SELECT * FROM monitored_projects WHERE id = $1',
+          [proyectoId]
+        );
+        return resDirect.rows[0] ?? null;
       }
       return res.rows[0];
     } catch (err) {

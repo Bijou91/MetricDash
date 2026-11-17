@@ -1,7 +1,12 @@
 const express = require('express');
 const cors = require('cors');
-const { inicializarEsquemaBD } = require('./db/pool');
-const tableroRoutes = require('./routes/tableroReportesRoutes');
+const metricasRouter = require('./controllers/MetricasController');
+const proyectoRouter = require('./controllers/ProyectoController');
+const defectoRouter = require('./controllers/DefectoController');
+const pruebasRouter = require('./controllers/PruebasController');
+const accionCorrectivaRouter = require('./controllers/AccionCorrectivaController');
+const actividadesSqaRouter = require('./controllers/ActividadesSqaController');
+const tableroReportesRouter = require('./routes/tableroReportesRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -9,15 +14,11 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
-// Rutas de API
-app.use('/api', tableroRoutes);
-
 app.get('/', (req, res) => {
   res.json({
     status: 'online',
-    servicio: 'MetricDash SQA Backend API',
-    version: '1.0.0',
-    casoDeUso: 'CU-07: Consultar el tablero y generar el reporte de salud'
+    servicio: 'SQA Dashboard API',
+    version: '1.0.0'
   });
 });
 
@@ -28,20 +29,16 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-async function iniciarServidor() {
-  try {
-    // Si la BD está disponible, inicializamos el esquema
-    await inicializarEsquemaBD();
-    console.log('[SQA Backend] Esquema de Base de Datos inicializado y verificado.');
-  } catch (err) {
-    console.warn('[SQA Backend] Advertencia al conectar con BD:', err.message);
-  }
+app.use('/api', proyectoRouter);
+app.use('/api', metricasRouter);
+app.use('/api', defectoRouter);
+app.use('/api', pruebasRouter);
+app.use('/api', accionCorrectivaRouter);
+app.use('/api', actividadesSqaRouter);
+app.use('/api', tableroReportesRouter);
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[SQA Backend] Servidor ejecutándose en http://0.0.0.0:${PORT}`);
-  });
-}
-
-iniciarServidor();
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[SQA Backend] Servidor ejecutándose en http://0.0.0.0:${PORT}`);
+});
 
 module.exports = app;

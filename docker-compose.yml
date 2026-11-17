@@ -9,9 +9,10 @@ services:
       POSTGRES_PASSWORD: sqa_password
       POSTGRES_DB: sqa_dashboard
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
     networks:
       - sqa_network
     healthcheck:
@@ -30,7 +31,7 @@ services:
       - NODE_ENV=development
       - PORT=4000
     ports:
-      - "4000:4000"
+      - "${API_PORT:-4000}:4000"
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -39,7 +40,8 @@ services:
         condition: service_healthy
     networks:
       - sqa_network
-    command: npm run dev
+    # npm install: el volumen anónimo de node_modules no se actualiza solo al agregar dependencias.
+    command: sh -c "npm install && npm run dev"
 
   web:
     build:
@@ -48,9 +50,9 @@ services:
     container_name: sqa_web
     environment:
       - NODE_ENV=development
-      - VITE_API_URL=http://localhost:4000
+      - VITE_PROXY_TARGET=http://api:4000
     ports:
-      - "3000:3000"
+      - "${WEB_PORT:-3000}:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -58,7 +60,18 @@ services:
       - api
     networks:
       - sqa_network
-    command: npm run dev
+    # npm install: el volumen anónimo de node_modules no se actualiza solo al agregar dependencias.
+    command: sh -c "npm install && npm run dev"
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: sqa_tunnel
+    restart: unless-stopped
+    command: tunnel --url http://web:3000
+    depends_on:
+      - web
+    networks:
+      - sqa_network
 
 volumes:
   pgdata:

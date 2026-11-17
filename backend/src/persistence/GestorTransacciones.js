@@ -1,4 +1,4 @@
-const { pool } = require('../db/pool');
+const { pool } = require('../data/pool');
 const { ErrorPersistencia } = require('../domain/errors');
 
 class GestorTransacciones {

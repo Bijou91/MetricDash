@@ -1,4 +1,4 @@
-const { pool } = require('../db/pool');
+const { pool } = require('../data/pool');
 const { UmbralMetrica } = require('../domain/models');
 const { ErrorPersistencia } = require('../domain/errors');
 

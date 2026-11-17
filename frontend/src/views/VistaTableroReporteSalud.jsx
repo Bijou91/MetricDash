@@ -4,9 +4,9 @@ import SemaforoMetricasWidget from '../components/SemaforoMetricasWidget';
 import PanelAlertasActivasWidget from '../components/PanelAlertasActivasWidget';
 import PrevisualizacionReporteWidget from '../components/PrevisualizacionReporteWidget';
 
-export default function VistaTableroReporteSalud() {
+export default function VistaTableroReporteSalud({ proyectoIdInicial = null }) {
   const [proyectos, setProyectos] = useState([]);
-  const [proyectoSeleccionadoId, setProyectoSeleccionadoId] = useState('');
+  const [proyectoSeleccionadoId, setProyectoSeleccionadoId] = useState(proyectoIdInicial || '');
   const [tablero, setTablero] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [mensajeError, setMensajeError] = useState('');
@@ -21,19 +21,22 @@ export default function VistaTableroReporteSalud() {
   // Historial de reportes guardados
   const [historial, setHistorial] = useState([]);
 
-  // Cargar lista de proyectos al iniciar
   useEffect(() => {
-    TableroSaludApiClient.listarProyectos()
-      .then((data) => {
-        setProyectos(data);
-        if (data && data.length > 0) {
-          setProyectoSeleccionadoId(data[0].id);
-        }
-      })
-      .catch((err) => {
-        setMensajeError(`Error al conectar con la base de datos o backend: ${err.message}`);
-      });
-  }, []);
+    if (proyectoIdInicial) {
+      setProyectoSeleccionadoId(proyectoIdInicial);
+    } else {
+      TableroSaludApiClient.listarProyectos()
+        .then((data) => {
+          setProyectos(data);
+          if (data && data.length > 0) {
+            setProyectoSeleccionadoId(data[0].id);
+          }
+        })
+        .catch((err) => {
+          setMensajeError(`Error al conectar con la base de datos o backend: ${err.message}`);
+        });
+    }
+  }, [proyectoIdInicial]);
 
   // Cargar tablero cada vez que cambia el proyecto seleccionado
   useEffect(() => {
@@ -149,68 +152,62 @@ export default function VistaTableroReporteSalud() {
   };
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '1.5rem', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1e293b' }}>
-      {/* Encabezado */}
-      <header style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '1rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <h1 style={{ margin: 0, color: '#1e3a8a', fontSize: '1.6rem' }}>MetricDash SQA</h1>
-            <span style={{ background: '#dbeafe', color: '#1e40af', padding: '3px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-              CU-07 Tablero y Reporte de Salud
-            </span>
+    <div className="space-y-6">
+      {/* Encabezado del Tablero */}
+      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold text-slate-800">Tablero de Salud Consolidado</h2>
+              <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
+                CU-07
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-slate-500">
+              Evaluación en semáforo de las 4 métricas, alertas activas e índice de salud general.
+            </p>
           </div>
-          <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.9rem' }}>
-            Monitoreo en semáforo de las 4 métricas de calidad y generación formal versionada a PDF.
-          </p>
-        </div>
 
-        {/* Selector de Proyecto Activo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <label htmlFor="selectorProyecto" style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>
-            Proyecto:
-          </label>
-          <select
-            id="selectorProyecto"
-            value={proyectoSeleccionadoId}
-            onChange={(e) => setProyectoSeleccionadoId(e.target.value)}
-            style={{
-              padding: '0.45rem 0.75rem',
-              borderRadius: '6px',
-              border: '1px solid #cbd5e1',
-              background: '#ffffff',
-              fontSize: '0.85rem',
-              color: '#0f172a'
-            }}
-          >
-            {proyectos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} {p.id === '99999999-9999-9999-9999-999999999999' ? '(Caso FA-04.01)' : ''}
-              </option>
-            ))}
-          </select>
+          {proyectos.length > 1 && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="selectorProyecto" className="text-xs font-semibold text-slate-600">
+                Cambiar Proyecto:
+              </label>
+              <select
+                id="selectorProyecto"
+                value={proyectoSeleccionadoId}
+                onChange={(e) => setProyectoSeleccionadoId(e.target.value)}
+                className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-800 shadow-sm"
+              >
+                {proyectos.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
-      </header>
+      </div>
 
-      {/* Notificaciones de Error y Éxito */}
+      {/* Notificaciones */}
       {mensajeError && (
-        <div style={{ background: '#fef2f2', borderLeft: '4px solid #ef4444', color: '#991b1b', padding: '0.75rem 1rem', borderRadius: '4px', marginBottom: '1.25rem', fontSize: '0.9rem' }}>
+        <div className="rounded-md border-l-4 border-red-500 bg-red-50 p-4 text-sm text-red-700">
           <strong>Error (FE-01):</strong> {mensajeError}
         </div>
       )}
 
       {mensajeExito && (
-        <div style={{ background: '#ecfdf5', borderLeft: '4px solid #10b981', color: '#065f46', padding: '0.75rem 1rem', borderRadius: '4px', marginBottom: '1.25rem', fontSize: '0.9rem' }}>
+        <div className="rounded-md border-l-4 border-emerald-500 bg-emerald-50 p-4 text-sm text-emerald-800">
           <strong>Éxito (FN-07):</strong> {mensajeExito}
         </div>
       )}
 
       {cargando && !tablero && (
-        <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+        <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
           Cargando tablero y datos de salud...
         </div>
       )}
 
-      {/* Vista de Previsualización (FN-03, FN-04, FN-05) */}
+      {/* Modo Previsualización (FN-03, FN-04, FN-05) */}
       {modoPrevisualizacion && previsualizacion ? (
         <PrevisualizacionReporteWidget
           previsualizacion={previsualizacion}
@@ -221,123 +218,99 @@ export default function VistaTableroReporteSalud() {
           generando={generando}
         />
       ) : (
-        /* Vista del Tablero Principal (FN-01 & FN-02) */
+        /* Vista de Tablero Principal (FN-01 & FN-02) */
         tablero && (
-          <div>
-            {/* Barra superior de Resumen y Acciones */}
-            <div
-              style={{
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                padding: '1rem 1.25rem',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '1.5rem',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-              }}
-            >
+          <div className="space-y-6">
+            {/* Banner del Índice y Acción de Generar Reporte */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <div>
-                <span style={{ fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
-                  Estado de Salud Consolidado
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Índice de Salud General
                 </span>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '2px' }}>
-                  <h2 style={{ margin: 0, fontSize: '1.4rem', color: '#1e3a8a' }}>
+                <div className="mt-1 flex items-baseline gap-3">
+                  <span className="text-3xl font-extrabold text-blue-900">
                     {tablero.indiceSaludGeneral_nullable !== null
-                      ? `Índice: ${tablero.indiceSaludGeneral_nullable}%`
-                      : 'Índice: Sin datos / Insuficiente'}
-                  </h2>
+                      ? `${tablero.indiceSaludGeneral_nullable}%`
+                      : 'Sin datos / Insuficiente'}
+                  </span>
                   <span
-                    style={{
-                      fontSize: '0.8rem',
-                      fontWeight: '700',
-                      padding: '2px 8px',
-                      borderRadius: '12px',
-                      background: tablero.estadoSaludGlobal === 'VERDE_OPTIMO' ? '#dcfce7' : tablero.estadoSaludGlobal === 'AMARILLO_ADVERTENCIA' ? '#fef3c7' : '#fee2e2',
-                      color: tablero.estadoSaludGlobal === 'VERDE_OPTIMO' ? '#15803d' : tablero.estadoSaludGlobal === 'AMARILLO_ADVERTENCIA' ? '#b45309' : '#b91c1c'
-                    }}
+                    className={`rounded-full px-3 py-0.5 text-xs font-bold ${
+                      tablero.estadoSaludGlobal === 'VERDE_OPTIMO'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : tablero.estadoSaludGlobal === 'AMARILLO_ADVERTENCIA'
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-red-100 text-red-800'
+                    }`}
                   >
                     {tablero.estadoSaludGlobal}
                   </span>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <div>
                 <button
+                  type="button"
                   onClick={solicitarPrevisualizacionReporte}
-                  style={{
-                    background: '#2563eb',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '0.6rem 1.2rem',
-                    fontSize: '0.85rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
+                  className="inline-flex items-center gap-2 rounded-md bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 transition-colors"
                 >
-                  📄 Generar Reporte de Salud (FN-03)
+                  <span>📄</span> Generar Reporte de Salud (FN-03)
                 </button>
               </div>
             </div>
 
-            {/* 1. Widgets Semáforo de las 4 Métricas (FN-02) */}
-            <div style={{ marginBottom: '1.75rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#0f172a' }}>
+            {/* 1. Indicadores de Semáforo de las 4 Métricas (FN-02) */}
+            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-slate-800">
                   1. Indicadores de Calidad en Semáforo (4 Métricas)
                 </h3>
-                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                  Mediciones derivadas de CU-03, CU-04 y CU-05
+                <span className="text-xs text-slate-500">
+                  Derivados de CU-03, CU-04 y CU-05
                 </span>
               </div>
               <SemaforoMetricasWidget indicadores={tablero.indicadores} />
             </div>
 
             {/* 2. Panel de Alertas Activas o de Deterioro (CU-06) */}
-            <div style={{ marginBottom: '2rem' }}>
-              <h3 style={{ margin: '0 0 0.75rem', fontSize: '1.05rem', color: '#0f172a' }}>
+            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+              <h3 className="text-base font-bold text-slate-800">
                 2. Alertas Activas de Calidad o Deterioro (CU-06)
               </h3>
               <PanelAlertasActivasWidget alertas={tablero.alertasActivas} />
             </div>
 
-            {/* 3. Historial de Cortes y Reportes Guardados (FN-07) */}
-            <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem' }}>
-              <h3 style={{ margin: '0 0 0.75rem', fontSize: '1.05rem', color: '#0f172a' }}>
+            {/* 3. Historial de Reportes Guardados (evaluation_cutoffs) */}
+            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+              <h3 className="text-base font-bold text-slate-800">
                 3. Historial de Reportes Versionados (evaluation_cutoffs)
               </h3>
               {historial && historial.length > 0 ? (
-                <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-                    <thead>
-                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
-                        <th style={{ padding: '0.6rem 0.8rem' }}>Versión / Corte</th>
-                        <th style={{ padding: '0.6rem 0.8rem' }}>Fecha</th>
-                        <th style={{ padding: '0.6rem 0.8rem' }}>Estado de Salud</th>
-                        <th style={{ padding: '0.6rem 0.8rem' }}>Notas Ejecutivas</th>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+                      <tr>
+                        <th className="px-4 py-3">Corte / Versión</th>
+                        <th className="px-4 py-3">Fecha</th>
+                        <th className="px-4 py-3">Estado de Salud</th>
+                        <th className="px-4 py-3">Notas Ejecutivas</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-100">
                       {historial.map((corte) => (
-                        <tr key={corte.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '0.6rem 0.8rem', fontWeight: 'bold', color: '#1e3a8a' }}>
+                        <tr key={corte.id} className="hover:bg-slate-50">
+                          <td className="px-4 py-3 font-semibold text-blue-900">
                             #{corte.cutoff_number} - {corte.cutoff_name}
                           </td>
-                          <td style={{ padding: '0.6rem 0.8rem', color: '#64748b' }}>
+                          <td className="px-4 py-3 text-slate-500">
                             {new Date(corte.cutoff_date).toLocaleDateString('es-ES')}
                           </td>
-                          <td style={{ padding: '0.6rem 0.8rem' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: '600', padding: '2px 6px', borderRadius: '4px', background: '#f1f5f9' }}>
+                          <td className="px-4 py-3">
+                            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
                               {corte.health_status}
                             </span>
                           </td>
-                          <td style={{ padding: '0.6rem 0.8rem', color: '#334155', maxWidth: '300px' }}>
-                            {corte.notes || <em style={{ color: '#94a3b8' }}>Sin notas</em>}
+                          <td className="px-4 py-3 text-slate-600 max-w-xs truncate">
+                            {corte.notes || <em className="text-slate-400">Sin notas</em>}
                           </td>
                         </tr>
                       ))}
@@ -345,8 +318,8 @@ export default function VistaTableroReporteSalud() {
                   </table>
                 </div>
               ) : (
-                <div style={{ fontSize: '0.85rem', color: '#94a3b8', background: '#f8fafc', padding: '1rem', borderRadius: '6px' }}>
-                  Aún no se han generado cortes históricos para este proyecto.
+                <div className="rounded-md border border-dashed border-slate-200 p-4 text-center text-xs text-slate-400">
+                  No hay reportes ni cortes registrados aún en el historial de este proyecto.
                 </div>
               )}
             </div>

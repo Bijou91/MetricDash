@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { pool } = require('../db/pool');
+const { pool } = require('../data/pool');
 const { ReporteSalud } = require('../domain/models');
 const { ErrorPersistencia } = require('../domain/errors');
 
