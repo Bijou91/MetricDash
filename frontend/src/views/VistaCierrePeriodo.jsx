@@ -163,9 +163,10 @@ export default function VistaCierrePeriodo({ proyectoId }) {
             <span className="font-medium text-slate-700">Miembro del equipo que cierra el periodo *</span>
             <select className="mt-1 block w-full rounded border border-slate-300 p-2 sm:w-80" value={cerradoPor} onChange={(e) => setCerradoPor(e.target.value)}>
               <option value="">Seleccione…</option>
-              {miembros.map((m) => <option key={m.id} value={m.id}>{m.member_name} ({m.role})</option>)}
+              {miembros.map((m) => <option key={m.id} value={m.id}>{m.nombre} ({m.rol})</option>)}
             </select>
             {errores.cerradoPor && <span className="text-xs font-medium text-red-700">{errores.cerradoPor}</span>}
+            {!cerradoPor && <span className="block text-xs text-slate-500">Seleccione quién cierra para poder confirmar.</span>}
           </label>
           {!noConfirmar ? (
             <div className="flex gap-3">
