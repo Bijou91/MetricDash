@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { pool } = require('../data/pool');
+const pool = require('../data/pool');
 const { ReporteSalud } = require('../domain/models');
 const { ErrorPersistencia } = require('../domain/errors');
 
@@ -11,11 +11,8 @@ class RepositorioCorteEvaluacion {
   async obtenerSiguienteVersionReporte(proyectoId, tx = null) {
     const client = tx ? tx.client : this.pool;
     try {
-      // Bloqueo FOR UPDATE para atomicidad en la versión si hay transacción
-      let query = 'SELECT COALESCE(MAX(cutoff_number), 0) + 1 AS siguiente_version FROM evaluation_cutoffs WHERE project_id = $1';
-      if (tx) {
-        query += ' FOR UPDATE';
-      }
+      // Nota: En PostgreSQL, FOR UPDATE no se puede usar directamente con funciones de agregación como MAX()
+      const query = 'SELECT COALESCE(MAX(cutoff_number), 0) + 1 AS siguiente_version FROM evaluation_cutoffs WHERE project_id = $1';
       const res = await client.query(query, [proyectoId]);
       return parseInt(res.rows[0].siguiente_version, 10);
     } catch (err) {
@@ -29,6 +26,9 @@ class RepositorioCorteEvaluacion {
       const id = reporte.id || crypto.randomUUID();
       const cutoffName = reporte.nombreVersion || `Reporte de Salud #${reporte.versionReporte}`;
       
+      // La columna kloc en evaluation_cutoffs tiene restricción NOT NULL DEFAULT 1.0
+      const klocValor = (reporte.klocActual !== null && reporte.klocActual !== undefined) ? Number(reporte.klocActual) : 1.0;
+
       const query = `
         INSERT INTO evaluation_cutoffs
         (id, project_id, cutoff_number, cutoff_name, cutoff_date, kloc, planned_sqa_acts, executed_sqa_acts, health_status, notes)
@@ -40,9 +40,9 @@ class RepositorioCorteEvaluacion {
         reporte.proyectoId,
         reporte.versionReporte,
         cutoffName,
-        reporte.klocActual,
-        reporte.actividadesPlaneadas,
-        reporte.actividadesEjecutadas,
+        klocValor,
+        reporte.actividadesPlaneadas || 0,
+        reporte.actividadesEjecutadas || 0,
         reporte.estadoSalud,
         reporte.notasEjecutivas
       ];
