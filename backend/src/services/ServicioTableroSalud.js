@@ -59,11 +59,21 @@ class ServicioTableroSalud {
   }
 
   async obtenerMedicionesVigentes(proyectoId) {
-    return this.repoMedicion.obtenerUltimasMediciones(proyectoId);
+    try {
+      return await this.repoMedicion.obtenerUltimasMediciones(proyectoId);
+    } catch (e) {
+      console.warn('[ServicioTableroSalud] Error al obtener mediciones:', e.message);
+      return [];
+    }
   }
 
   async obtenerUmbralesVigentes(proyectoId) {
-    return this.repoUmbral.obtenerUmbralesVigentes(proyectoId);
+    try {
+      return await this.repoUmbral.obtenerUmbralesVigentes(proyectoId);
+    } catch (e) {
+      console.warn('[ServicioTableroSalud] Error al obtener umbrales:', e.message);
+      return [];
+    }
   }
 
   consolidarIndicadores(mediciones = [], umbrales = []) {
@@ -88,12 +98,12 @@ class ServicioTableroSalud {
       return new IndicadorMetricaDTO({
         tipoMetrica: tipo,
         valorActual: m ? m.valorCalculado : null,
-        unidad: u ? u.unidad : '',
+        unidad: u ? u.unidad : (tipo === 'DENSIDAD_DEFECTOS' ? 'defectos/KLOC' : '%'),
         nivelSemaforo: m ? m.nivelSemaforo : NivelSemaforo.SIN_DATOS,
         meta: u ? u.valorMeta : null,
         advertencia: u ? u.umbralAdvertencia : null,
         critico: u ? u.umbralCritico : null,
-        sentido: u ? u.sentido : null,
+        sentido: u ? u.sentido : (tipo === 'DENSIDAD_DEFECTOS' ? 'MENOR_ES_MEJOR' : 'MAYOR_ES_MEJOR'),
         fechaMedicion: m ? m.fechaMedicion : null
       });
     });
