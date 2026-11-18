@@ -5,11 +5,12 @@ import VistaTableroDefecto from './views/VistaTableroDefecto';
 import GestionActividadesSqaView from './views/GestionActividadesSqaView';
 import VistaRegistroPruebas from './views/VistaRegistroPruebas';
 import VistaAccionCorrectiva from './views/VistaAccionCorrectiva';
+import VistaCierrePeriodo from './views/VistaCierrePeriodo';
 import * as proyectosApi from './api/ProyectosApiClient';
 
 export default function App() {
   const [apiStatus, setApiStatus] = useState('Verificando conexión con el backend...');
-  const [tabActiva, setTabActiva] = useState('cu01'); // 'cu01' | 'cu02' | 'cu03' | 'cu04' | 'cu05' | 'cu06'
+  const [tabActiva, setTabActiva] = useState('cu01'); // 'cu01' | 'cu02' | 'cu03' | 'cu04' | 'cu05' | 'cu06' | 'cu08'
   const [proyectoActivo, setProyectoActivo] = useState(null);
   const [actividadSqaFocoId, setActividadSqaFocoId] = useState(null);
 
@@ -129,6 +130,17 @@ export default function App() {
           >
             Acciones Correctivas
           </button>
+          <button
+            type="button"
+            onClick={() => cambiarTab('cu08')}
+            className={`border-b-2 pb-2.5 text-sm font-semibold transition-colors ${
+              tabActiva === 'cu08'
+                ? 'border-blue-700 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Cierre del Periodo
+          </button>
         </nav>
       </header>
 
@@ -177,6 +189,12 @@ export default function App() {
         {tabActiva === 'cu06' && (
           proyectoActivo
             ? <VistaAccionCorrectiva proyectoId={proyectoActivo.id} />
+            : <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-800">Registre primero el proyecto del periodo.</p>
+        )}
+
+        {tabActiva === 'cu08' && (
+          proyectoActivo
+            ? <VistaCierrePeriodo proyectoId={proyectoActivo.id} />
             : <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-800">Registre primero el proyecto del periodo.</p>
         )}
       </main>

@@ -8,8 +8,8 @@ const COLUMNAS_MEDICION = Object.freeze({
   [TipoMetrica.CUMPLIMIENTO_SQA]: 'sqa_compliance_pct',
 });
 
-async function obtenerVigente(proyectoId) {
-  const { rows } = await pool.query(
+async function obtenerVigente(proyectoId, tx = pool) {
+  const { rows } = await tx.query(
     `SELECT c.id, c.project_id, c.version, c.is_current, c.created_by, c.created_at,
             t.metric_type, t.target_value, t.warning_threshold, t.critical_threshold
        FROM metric_configurations c
@@ -133,6 +133,7 @@ async function obtenerMedicionesHistoricas(proyectoId, tipoMetrica, limite = 3, 
     );
     if (rows && rows.length > 0) {
       return rows.map((r) => ({
+        id: r.id,
         valor: Number(r.value),
         estadoSemaforo: r.health_status,
         fecha: r.recorded_at,

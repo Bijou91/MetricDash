@@ -53,8 +53,8 @@ async function contarDefectosProyecto(proyectoId, tx = pool) {
   return n;
 }
 
-async function listarPorProyecto(proyectoId) {
-  const { rows } = await pool.query(
+async function listarPorProyecto(proyectoId, tx = pool) {
+  const { rows } = await tx.query(
     `SELECT d.*, a.member_name AS asignado_nombre, r.member_name AS reportado_nombre
        FROM defects d
        JOIN evaluation_cutoffs c ON c.id = d.cutoff_id

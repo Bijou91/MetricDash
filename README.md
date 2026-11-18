@@ -27,6 +27,7 @@ El sistema sigue una arquitectura de 3 capas completamente desacoplada y contene
 | **CU-04** | **Actividades SQA** | Planificación formal de actividades, ejecución mediante checklists normativos ISO/IEC 29110, generación automática de defectos ante hallazgos, emisión de actas de revisión por pares y recálculo de cumplimiento SQA. |
 | **CU-05** | **Resultados de Pruebas** | Registro de rondas de pruebas planificadas, ejecutadas, exitosas y fallidas por corte; cálculo automático de cobertura y tasa de éxito con evaluación en semáforo. |
 | **CU-06** | **Deterioro y Acciones Correctivas** | Detección automática de deterioro de métricas (caída consecutiva o cruce de umbral crítico), análisis determinista de causas raíz, registro de acciones correctivas y verificación de eficacia cuantitativa ($V_{n+1} \text{ vs } V_\alpha$). |
+| **CU-08** | **Cierre del Periodo y Bitácora SQA** | Resolución de pendientes del periodo (arrastrar, cancelar o cerrar con justificación), retrospectiva, resumen simulado sin guardar, cierre atómico que congela las 4 métricas, genera el reporte final de salud y la bitácora de SQA en PDF, y bloquea nuevos registros en el periodo cerrado. |
 
 ---
 
@@ -76,7 +77,14 @@ Para validar que la lógica de negocio, validaciones y cálculos funcionan corre
 docker exec sqa_api npm test
 ```
 
-Esto ejecutará la suite de pruebas unitarias y de integración que verifica los criterios de detección de deterioro, validación de acciones correctivas, verificación de eficacia y reglas de negocio con **16/16 pruebas aprobadas**.
+Esto ejecutará la suite de pruebas unitarias y de integración que verifica los criterios de detección de deterioro, validación de acciones correctivas, verificación de eficacia y reglas de negocio de los CU-06 y CU-08 con **37/37 pruebas aprobadas**.
+
+Para el CU-08 también hay pruebas de integración contra el API y PostgreSQL reales (requieren un periodo activo ABIERTO y sin proyecto; al terminar reabren el periodo y eliminan el proyecto de prueba):
+
+```bash
+docker exec sqa_db psql -U sqa_user -d sqa_dashboard -f /docker-entrypoint-initdb.d/06_cu08.sql   # solo en volúmenes creados antes del CU-08
+docker exec -e API_URL=http://localhost:4000 sqa_api npm run test:integracion:cu08
+```
 
 ---
 

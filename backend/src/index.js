@@ -6,6 +6,8 @@ const defectoRouter = require('./controllers/DefectoController');
 const pruebasRouter = require('./controllers/PruebasController');
 const accionCorrectivaRouter = require('./controllers/AccionCorrectivaController');
 const actividadesSqaRouter = require('./controllers/ActividadesSqaController');
+const cierrePeriodoRouter = require('./controllers/CierrePeriodoController');
+const proyectoRepo = require('./data/ProyectoRepository');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -28,6 +30,21 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// CU-08 postcondición: un periodo CERRADO no admite nuevos registros (las rutas del CU-08 manejan su propio FE-02).
+app.use('/api', async (req, res, next) => {
+  if (req.method === 'GET' || /\/cierres?(\/|$)/.test(req.path)) return next();
+  try {
+    const periodo = await proyectoRepo.obtenerPeriodoActivo();
+    if (periodo?.status === 'CERRADO') {
+      return res.status(409).json({ mensaje: 'El periodo está cerrado y no admite nuevos registros.' });
+    }
+    return next();
+  } catch (err) {
+    return next(err);
+  }
+});
+
+app.use('/api', cierrePeriodoRouter);
 app.use('/api', proyectoRouter);
 app.use('/api', metricasRouter);
 app.use('/api', defectoRouter);

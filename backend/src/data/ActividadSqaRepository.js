@@ -12,6 +12,7 @@ const ESTADO_DOMINIO_A_DB = Object.freeze({
   IN_PROGRESS: 'IN_PROGRESS',
   REALIZADA: 'DONE',
   DONE: 'DONE',
+  CANCELADA: 'CANCELADA',
 });
 
 const FASE_A_NUMERO_CORTE = Object.freeze({
@@ -209,16 +210,27 @@ async function marcarEnRetrabajo(actividad, evidencia, tx = pool) {
   return actGuardada;
 }
 
-// FN-08: Cuenta el total de actividades exigibles del plan base del proyecto.
+// FN-08: Cuenta el total de actividades exigibles del plan base del proyecto (CU-08: sin las CANCELADA).
 async function contarExigibles(proyectoId, _fecha = new Date(), tx = pool) {
   const client = tx && typeof tx.query === 'function' ? tx : pool;
   const { rows } = await client.query(
     `SELECT count(*)::int AS n
        FROM sqa_activities
-      WHERE project_id = $1`,
+      WHERE project_id = $1 AND status <> 'CANCELADA'`,
     [proyectoId],
   );
   return rows[0]?.n ?? 0;
+}
+
+// CU-08 FN-07: cierre (REALIZADA) o cancelación (CANCELADA) de una actividad pendiente al cerrar el periodo.
+async function actualizarEstado(actividadId, estado, tx) {
+  await tx.query(
+    `UPDATE sqa_activities
+        SET status = $1::varchar,
+            execution_date = CASE WHEN $1::varchar = 'DONE' THEN COALESCE(execution_date, CURRENT_DATE) ELSE execution_date END
+      WHERE id = $2`,
+    [ESTADO_DOMINIO_A_DB[estado], actividadId],
+  );
 }
 
 // Cuenta las actividades totales y realizadas de una fase específica del proyecto (para el corte correspondiente).
@@ -258,6 +270,7 @@ module.exports = {
   marcarRealizada,
   marcarEnRetrabajo,
   contarExigibles,
+  actualizarEstado,
   contarRealizadas,
   contarPorFase,
 };
