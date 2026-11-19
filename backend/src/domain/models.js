@@ -18,6 +18,13 @@ const SentidoMetrica = Object.freeze({
   MENOR_ES_MEJOR: 'MENOR_ES_MEJOR'
 });
 
+// Estado del índice de salud: CALCULADO (4 métricas con medición), INSUFICIENTE (1 a 3) o SIN_DATOS (ninguna).
+const EstadoIndice = Object.freeze({
+  CALCULADO: 'CALCULADO',
+  INSUFICIENTE: 'INSUFICIENTE',
+  SIN_DATOS: 'SIN_DATOS'
+});
+
 const ImpactoMetrica = Object.freeze({
   POSITIVO: 'POSITIVO',
   NEUTRO: 'NEUTRO',
@@ -109,6 +116,7 @@ class ReporteSalud {
     actividadesPlaneadas = null,
     actividadesEjecutadas = null,
     estadoSalud,
+    estadoIndice = null,
     indiceSaludGeneral = null,
     notasEjecutivas = null,
     desglose = []
@@ -122,7 +130,8 @@ class ReporteSalud {
     this.actividadesPlaneadas = actividadesPlaneadas !== null ? Number(actividadesPlaneadas) : null;
     this.actividadesEjecutadas = actividadesEjecutadas !== null ? Number(actividadesEjecutadas) : null;
     this.estadoSalud = estadoSalud;
-    this.indiceSaludGeneral = indiceSaludGeneral !== null ? Number(indiceSaludGeneral) : null;
+    this.indiceSaludGeneral = indiceSaludGeneral !== null && indiceSaludGeneral !== undefined ? Number(indiceSaludGeneral) : null;
+    this.estadoIndice = estadoIndice || (this.indiceSaludGeneral !== null ? EstadoIndice.CALCULADO : EstadoIndice.SIN_DATOS);
     this.definirNotasEjecutivas(notasEjecutivas);
     this.desglose = desglose;
   }
@@ -136,7 +145,7 @@ class ReporteSalud {
   }
 
   esEstadoSinDatos() {
-    return this.estadoSalud === NivelSemaforo.SIN_DATOS || this.indiceSaludGeneral === null;
+    return this.estadoIndice !== EstadoIndice.CALCULADO || this.indiceSaludGeneral === null;
   }
 }
 
@@ -144,6 +153,7 @@ module.exports = {
   NivelSemaforo,
   TipoMetrica,
   SentidoMetrica,
+  EstadoIndice,
   ImpactoMetrica,
   TableroControl,
   MedicionMetrica,

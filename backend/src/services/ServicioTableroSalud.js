@@ -28,11 +28,12 @@ class ServicioTableroSalud {
     }
 
     const umbrales = await this.obtenerUmbralesVigentes(proyectoId);
-    const mediciones = await this.obtenerMedicionesVigentes(proyectoId);
+    const mediciones = await this.obtenerMedicionesVigentes(proyectoId, umbrales);
     const alertas = await this.repoAlerta.listarAlertasActivasPorProyecto(proyectoId);
 
     const indicadores = this.consolidarIndicadores(mediciones, umbrales);
     const estadoSaludGlobal = this.calculadorSalud.determinarEstadoSaludGlobal(mediciones);
+    const estadoIndice = this.calculadorSalud.determinarEstadoIndice(mediciones);
     const indiceSalud = this.calculadorSalud.calcularIndiceSaludDeterminista(mediciones);
 
     const alertasDTO = alertas.map(a => new AlertaResumenDTO({
@@ -48,6 +49,7 @@ class ServicioTableroSalud {
       nombreProyecto: proyecto.name,
       versionUmbrales: 1,
       estadoSaludGlobal,
+      estadoIndice,
       indiceSaludGeneral_nullable: indiceSalud,
       indicadores,
       alertasActivas: alertasDTO
@@ -58,9 +60,14 @@ class ServicioTableroSalud {
     return this.consultarTableroConsolidado(proyectoId);
   }
 
-  async obtenerMedicionesVigentes(proyectoId) {
+  // El semáforo de cada métrica se evalúa aquí contra su umbral vigente (CU-02) a partir del valor medido.
+  // No se confía en health_status guardado en metric_measurements: algunos módulos persisten ahí el estado
+  // global del corte en lugar del propio de la métrica, y eso contradecía lo que muestran las demás pantallas.
+  async obtenerMedicionesVigentes(proyectoId, umbrales = null) {
     try {
-      return await this.repoMedicion.obtenerUltimasMediciones(proyectoId);
+      const mediciones = await this.repoMedicion.obtenerUltimasMediciones(proyectoId);
+      const vigentes = umbrales || await this.obtenerUmbralesVigentes(proyectoId);
+      return this.reevaluarSemaforo(mediciones, vigentes);
     } catch (e) {
       console.warn('[ServicioTableroSalud] Error al obtener mediciones:', e.message);
       return [];
@@ -74,6 +81,15 @@ class ServicioTableroSalud {
       console.warn('[ServicioTableroSalud] Error al obtener umbrales:', e.message);
       return [];
     }
+  }
+
+  reevaluarSemaforo(mediciones = [], umbrales = []) {
+    const mapaUmbrales = new Map(umbrales.map(u => [u.tipoMetrica, u]));
+    return mediciones.map((m) => {
+      const nivel = this.calculadorSalud.evaluarNivelSemaforo(m.valorCalculado, mapaUmbrales.get(m.tipoMetrica));
+      if (nivel) m.nivelSemaforo = nivel;
+      return m;
+    });
   }
 
   consolidarIndicadores(mediciones = [], umbrales = []) {
@@ -111,7 +127,7 @@ class ServicioTableroSalud {
 
   async consolidarIndicadoresVigentes(proyectoId) {
     const umbrales = await this.obtenerUmbralesVigentes(proyectoId);
-    const mediciones = await this.obtenerMedicionesVigentes(proyectoId);
+    const mediciones = await this.obtenerMedicionesVigentes(proyectoId, umbrales);
     return this.consolidarIndicadores(mediciones, umbrales);
   }
 }

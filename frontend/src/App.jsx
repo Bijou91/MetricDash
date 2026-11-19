@@ -139,7 +139,7 @@ export default function App() {
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
-            Tablero y Reporte de Salud (CU-07)
+            Tablero y Reporte de Salud
           </button>
         </nav>
       </header>
@@ -195,7 +195,7 @@ export default function App() {
         {tabActiva === 'cu07' && (
           proyectoId
             ? <VistaTableroReporteSalud proyectoIdInicial={proyectoId} />
-            : <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-800">Registre primero el proyecto del periodo (CU-01) para consultar el tablero de salud.</p>
+            : <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-800">Registre primero el proyecto del periodo para consultar el tablero de salud.</p>
         )}
       </main>
     </div>

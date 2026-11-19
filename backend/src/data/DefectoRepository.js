@@ -14,6 +14,7 @@ const aDefecto = (r) => new Defecto({
   confirmadoNoDuplicado: r.confirmed_not_duplicate,
   reportadoPorId: r.reported_by,
   asignadoAId: r.assigned_to,
+  reviewId: r.review_id,
 });
 
 // El folio se calcula con el proyecto bloqueado para que dos registros simultáneos no repitan número.
@@ -26,11 +27,11 @@ async function guardar(defecto, corte, tx) {
   const folio = `DEF-${String(n + 1).padStart(3, '0')}`;
   const { rows } = await tx.query(
     `INSERT INTO defects (cutoff_id, folio, title, description, severity, priority, detection_phase, origin_phase,
-                          status, assigned_to, reported_by, confirmed_not_duplicate)
+                          status, assigned_to, reported_by, confirmed_not_duplicate, review_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
     [corte.id, folio, defecto.descripcionDetallada.slice(0, 200), defecto.descripcionDetallada, defecto.severidad,
       defecto.prioridad, defecto.faseDeteccion, defecto.faseOrigen, defecto.estado, defecto.asignadoAId,
-      defecto.reportadoPorId, defecto.confirmadoNoDuplicado],
+      defecto.reportadoPorId, defecto.confirmadoNoDuplicado, defecto.reviewId || null],
   );
   return aDefecto(rows[0]);
 }

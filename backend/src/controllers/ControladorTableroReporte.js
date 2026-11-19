@@ -70,6 +70,23 @@ class ControladorTableroReporte {
       });
     }
   }
+
+  // Descarga de un reporte ya generado (vuelve a compilar el PDF desde el desglose almacenado)
+  async descargarPDFReporte(req, res) {
+    try {
+      const { proyectoId, reporteId } = req.params;
+      const archivo = await this.servicioReporte.regenerarPDF(proyectoId, reporteId);
+      if (!archivo) {
+        return res.status(404).json({ error: 'El reporte solicitado no existe.' });
+      }
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${archivo.nombreArchivo}"`);
+      return res.status(200).send(archivo.contenidoBytes);
+    } catch (err) {
+      console.error('[ControladorTableroReporte] Error en descargarPDFReporte:', err);
+      return res.status(500).json({ error: 'No se pudo generar el PDF del reporte. Por favor, reintente.' });
+    }
+  }
 }
 
 module.exports = ControladorTableroReporte;

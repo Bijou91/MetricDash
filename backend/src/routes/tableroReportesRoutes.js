@@ -1,12 +1,12 @@
 const express = require('express');
 const ControladorTableroReporte = require('../controllers/ControladorTableroReporte');
 const RepositorioProyecto = require('../persistence/RepositorioProyecto');
-const RepositorioCorteEvaluacion = require('../persistence/RepositorioCorteEvaluacion');
+const RepositorioReporteSalud = require('../persistence/RepositorioReporteSalud');
 
 const router = express.Router();
 const controlador = new ControladorTableroReporte();
 const repoProyecto = new RepositorioProyecto();
-const repoCorte = new RepositorioCorteEvaluacion();
+const repoReportes = new RepositorioReporteSalud();
 
 // Listado de proyectos disponibles (para facilitar navegación en frontend)
 router.get('/proyectos', async (req, res) => {
@@ -37,11 +37,16 @@ router.post('/proyectos/:proyectoId/reportes-salud', (req, res) => {
 router.get('/proyectos/:proyectoId/reportes-salud/historial', async (req, res) => {
   try {
     const { proyectoId } = req.params;
-    const historial = await repoCorte.listarHistorialReportes(proyectoId);
+    const historial = await repoReportes.listarHistorialReportes(proyectoId);
     res.json(historial);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// Descarga del PDF de un reporte previo
+router.get('/proyectos/:proyectoId/reportes-salud/:reporteId/pdf', (req, res) => {
+  controlador.descargarPDFReporte(req, res);
 });
 
 module.exports = router;

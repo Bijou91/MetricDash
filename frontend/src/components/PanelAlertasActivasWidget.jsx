@@ -1,4 +1,5 @@
 import React from 'react';
+import { nombreMetrica, ETIQUETA_NIVEL } from '../utils/etiquetasSalud';
 
 export default function PanelAlertasActivasWidget({ alertas = [] }) {
   if (!alertas || alertas.length === 0) {
@@ -38,7 +39,7 @@ export default function PanelAlertasActivasWidget({ alertas = [] }) {
           >
             <div>
               <div style={{ fontWeight: '600', fontSize: '0.85rem', color: esCritico ? '#991b1b' : '#92400e' }}>
-                ⚠️ {alerta.tipoMetrica} — {alerta.nivelSemaforo}
+                ⚠️ {nombreMetrica(alerta.tipoMetrica)} — {ETIQUETA_NIVEL[alerta.nivelSemaforo] || alerta.nivelSemaforo}
               </div>
               <div style={{ fontSize: '0.85rem', color: '#334155', marginTop: '2px' }}>
                 {alerta.mensaje}

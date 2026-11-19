@@ -1,6 +1,8 @@
 const {
   TipoMetrica,
   NivelSemaforo,
+  SentidoMetrica,
+  EstadoIndice,
   ImpactoMetrica,
   DesgloseImpactoMetrica
 } = require('../domain/models');
@@ -20,12 +22,38 @@ class CalculadorIndiceSalud {
     ];
   }
 
+  // Evalúa el semáforo de UNA métrica a partir de su valor y su umbral vigente (CU-02).
+  // Los umbrales son inclusivos del lado "mejor": alcanzar la advertencia aún es verde.
+  // Devuelve null si no hay valor o no hay umbral contra el cual evaluar.
+  evaluarNivelSemaforo(valor, umbral) {
+    if (valor === null || valor === undefined || !umbral) return null;
+    const v = Number(valor);
+    if (!Number.isFinite(v)) return null;
+    const mejorOIgual = (a, b) => (umbral.sentido === SentidoMetrica.MENOR_ES_MEJOR ? a <= b : a >= b);
+    if (mejorOIgual(v, umbral.umbralAdvertencia)) return NivelSemaforo.VERDE_OPTIMO;
+    if (mejorOIgual(v, umbral.umbralCritico)) return NivelSemaforo.AMARILLO_ADVERTENCIA;
+    return NivelSemaforo.ROJO_CRITICO;
+  }
+
+  // Cuántas de las 4 métricas tienen una medición utilizable (valor y semáforo válidos).
+  contarMetricasConDatos(mediciones = []) {
+    const mapa = new Map((mediciones || []).map(m => [m.tipoMetrica, m]));
+    return this.METRICAS_REQUERIDAS.filter(tipo => {
+      const med = mapa.get(tipo);
+      return Boolean(med) && med.valorCalculado !== null && this.asignarPuntajeSemaforo(med.nivelSemaforo) !== null;
+    }).length;
+  }
+
   verificarMedicionesCompletas(mediciones = []) {
-    if (!mediciones || mediciones.length < 4) {
-      return false;
-    }
-    const tiposPresentes = new Set(mediciones.map(m => m.tipoMetrica));
-    return this.METRICAS_REQUERIDAS.every(tipo => tiposPresentes.has(tipo));
+    return this.contarMetricasConDatos(mediciones) === this.METRICAS_REQUERIDAS.length;
+  }
+
+  // FA-04.01: "Sin datos" si ninguna métrica tiene mediciones, "Insuficiente" si solo algunas las tienen.
+  determinarEstadoIndice(mediciones = []) {
+    const conDatos = this.contarMetricasConDatos(mediciones);
+    if (conDatos === 0) return EstadoIndice.SIN_DATOS;
+    if (conDatos < this.METRICAS_REQUERIDAS.length) return EstadoIndice.INSUFICIENTE;
+    return EstadoIndice.CALCULADO;
   }
 
   asignarPuntajeSemaforo(nivel) {
@@ -82,44 +110,53 @@ class CalculadorIndiceSalud {
     }
   }
 
+  // El desglose siempre incluye las 4 métricas: la que no tiene medición aparece como SIN_DATOS.
   generarDesgloseImpacto(mediciones = [], umbrales = []) {
     const mapaUmbrales = new Map();
     umbrales.forEach(u => mapaUmbrales.set(u.tipoMetrica, u));
+    const mapaMediciones = new Map();
+    (mediciones || []).forEach(m => mapaMediciones.set(m.tipoMetrica, m));
 
     const desgloses = [];
 
-    for (const med of mediciones) {
-      const umbral = mapaUmbrales.get(med.tipoMetrica);
-      const puntaje = this.asignarPuntajeSemaforo(med.nivelSemaforo);
+    for (const tipo of this.METRICAS_REQUERIDAS) {
+      const med = mapaMediciones.get(tipo);
+      const umbral = mapaUmbrales.get(tipo);
+      const unidad = umbral ? umbral.unidad : '';
+      const meta = umbral ? umbral.valorMeta : 'N/A';
+      const puntaje = med ? this.asignarPuntajeSemaforo(med.nivelSemaforo) : null;
+      const tieneDato = Boolean(med) && med.valorCalculado !== null && puntaje !== null;
 
       let impacto = ImpactoMetrica.SIN_DATOS;
       let justificacion = '';
-      let ordenPrioridad = 4;
+      let ordenPrioridad = 5;
+      let nivel = NivelSemaforo.SIN_DATOS;
 
-      if (med.nivelSemaforo === NivelSemaforo.ROJO_CRITICO) {
+      if (!tieneDato) {
+        justificacion = 'No se cuenta con mediciones vigentes registradas.';
+      } else if (med.nivelSemaforo === NivelSemaforo.ROJO_CRITICO) {
+        nivel = med.nivelSemaforo;
         impacto = ImpactoMetrica.NEGATIVO;
         ordenPrioridad = 1; // Máxima atención requerida
-        justificacion = `Estado crítico: Valor de ${med.valorCalculado} ${umbral ? umbral.unidad : ''} no cumple el umbral aceptable (Meta: ${umbral ? umbral.valorMeta : 'N/A'}).`;
+        justificacion = `Estado crítico: valor de ${med.valorCalculado} ${unidad} no cumple el umbral aceptable (meta: ${meta}).`;
       } else if (med.nivelSemaforo === NivelSemaforo.AMARILLO_ADVERTENCIA) {
+        nivel = med.nivelSemaforo;
         impacto = ImpactoMetrica.NEUTRO;
         ordenPrioridad = 2; // Atención preventiva
-        justificacion = `Estado de advertencia: Valor de ${med.valorCalculado} ${umbral ? umbral.unidad : ''} en rango de riesgo respecto a la meta de ${umbral ? umbral.valorMeta : 'N/A'}.`;
-      } else if (med.nivelSemaforo === NivelSemaforo.VERDE_OPTIMO) {
+        justificacion = `Estado de advertencia: valor de ${med.valorCalculado} ${unidad} en rango de riesgo respecto a la meta de ${meta}.`;
+      } else {
+        nivel = med.nivelSemaforo;
         impacto = ImpactoMetrica.POSITIVO;
         ordenPrioridad = 3; // Favorable
-        justificacion = `Estado óptimo: Valor de ${med.valorCalculado} ${umbral ? umbral.unidad : ''} cumple satisfactoriamente la meta de calidad (${umbral ? umbral.valorMeta : 'N/A'}).`;
-      } else {
-        impacto = ImpactoMetrica.SIN_DATOS;
-        ordenPrioridad = 5;
-        justificacion = 'No se cuenta con mediciones vigentes registradas.';
+        justificacion = `Estado óptimo: valor de ${med.valorCalculado} ${unidad} cumple satisfactoriamente la meta de calidad (${meta}).`;
       }
 
       desgloses.push(new DesgloseImpactoMetrica({
-        tipoMetrica: med.tipoMetrica,
-        valorMedido: med.valorCalculado,
+        tipoMetrica: tipo,
+        valorMedido: tieneDato ? med.valorCalculado : null,
         valorMeta: umbral ? umbral.valorMeta : null,
-        nivelSemaforo: med.nivelSemaforo,
-        puntajeAportado: puntaje !== null ? (puntaje * 0.25) : 0,
+        nivelSemaforo: nivel,
+        puntajeAportado: tieneDato ? (puntaje * (this.PESO_EQUITATIVO_METRICA / 100.0)) : 0,
         impacto,
         ordenPrioridad,
         justificacionImpacto: justificacion

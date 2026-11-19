@@ -9,7 +9,8 @@
     "test": "node --test scripts/pruebaCU06.js",
     "test:integracion": "node scripts/pruebasImplementacion.js",
     "prueba:sintetica": "node scripts/pruebaSinteticaCU02.js",
-    "prueba:cu06": "node --test scripts/pruebaCU06.js"
+    "prueba:cu06": "node --test scripts/pruebaCU06.js",
+    "prueba:cu07": "node --test test/cu07CalculadorIndiceSalud.test.js && node test/calculador.test.js && node test/pdf.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

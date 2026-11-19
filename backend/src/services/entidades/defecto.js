@@ -15,9 +15,9 @@ const EstadoDefecto = Object.freeze({
 class Defecto {
   constructor({ id, folio, fechaRegistro, severidad, prioridad, faseDeteccion, faseOrigen,
     descripcionDetallada, estado = EstadoDefecto.REGISTRADO, confirmadoNoDuplicado = false,
-    reportadoPorId, asignadoAId = null }) {
+    reportadoPorId, asignadoAId = null, reviewId = null }) {
     Object.assign(this, { id, folio, fechaRegistro, severidad, prioridad, faseDeteccion, faseOrigen,
-      descripcionDetallada, estado, confirmadoNoDuplicado, reportadoPorId, asignadoAId });
+      descripcionDetallada, estado, confirmadoNoDuplicado, reportadoPorId, asignadoAId, reviewId });
   }
 
   esCritico() {

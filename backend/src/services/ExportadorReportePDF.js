@@ -1,6 +1,7 @@
 const PDFDocument = require('pdfkit');
 const { ArchivoPDFDTO } = require('../domain/dtos');
 const { ErrorGeneracionPDF } = require('../domain/errors');
+const { NOMBRES_METRICA, ETIQUETA_NIVEL, ETIQUETA_IMPACTO, textoIndice } = require('../domain/etiquetas');
 
 class ExportadorReportePDF {
   compilarPDF(reporte, desglose = []) {
@@ -46,13 +47,11 @@ class ExportadorReportePDF {
         doc.fontSize(14).text('1. Resumen Ejecutivo del Estado de Salud', { underline: true });
         doc.moveDown(0.5);
 
-        const indiceTexto = reporte.indiceSaludGeneral !== null
-          ? `${reporte.indiceSaludGeneral.toFixed(1)}%`
-          : 'Sin datos / Insuficiente';
+        const indiceTexto = textoIndice(reporte.estadoIndice, reporte.indiceSaludGeneral);
 
         doc.fontSize(11)
           .text(`• Proyecto ID: ${reporte.proyectoId}`)
-          .text(`• Estado Consolidado: ${reporte.estadoSalud}`)
+          .text(`• Estado Consolidado: ${ETIQUETA_NIVEL[reporte.estadoSalud] || reporte.estadoSalud}`)
           .text(`• Índice de Salud Calculado: ${indiceTexto}`);
 
         doc.moveDown(1);
@@ -68,16 +67,16 @@ class ExportadorReportePDF {
             if (item.nivelSemaforo === 'AMARILLO_ADVERTENCIA') colorBadge = '#f59e0b';
             if (item.nivelSemaforo === 'SIN_DATOS') colorBadge = '#94a3b8';
 
-            doc.fontSize(11).fillColor('#0f172a').text(`${idx + 1}. Métrica: ${item.tipoMetrica}`, { bold: true });
+            doc.fontSize(11).fillColor('#0f172a').text(`${idx + 1}. ${NOMBRES_METRICA[item.tipoMetrica] || item.tipoMetrica}`, { bold: true });
             doc.fontSize(10).fillColor('#334155')
               .text(`   - Valor Medido: ${item.valorMedido !== null ? item.valorMedido : 'N/A'} | Meta: ${item.valorMeta !== null ? item.valorMeta : 'N/A'}`)
-              .text(`   - Semáforo: ${item.nivelSemaforo} | Impacto: ${item.impacto}`)
+              .text(`   - Semáforo: ${ETIQUETA_NIVEL[item.nivelSemaforo] || item.nivelSemaforo} | Impacto: ${ETIQUETA_IMPACTO[item.impacto] || item.impacto}`)
               .text(`   - Puntaje aportado al índice: ${item.puntajeAportado}% (de 25%)`)
               .text(`   - Justificación: ${item.justificacionImpacto}`);
             doc.moveDown(0.5);
           });
         } else {
-          doc.fontSize(10).fillColor('#64748b').text('No se registraron métricas vigentes para este corte.');
+          doc.fontSize(10).fillColor('#64748b').text('No se registraron métricas vigentes para este reporte.');
         }
 
         doc.moveDown(1);

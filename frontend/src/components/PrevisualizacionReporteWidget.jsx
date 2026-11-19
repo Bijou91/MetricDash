@@ -1,4 +1,5 @@
 import React from 'react';
+import { nombreMetrica, textoIndice, etiquetaEstadoGlobal } from '../utils/etiquetasSalud';
 
 const MAPA_IMPACTO = {
   POSITIVO: { color: '#059669', badgeBg: '#d1fae5', label: 'Impacto Positivo (+)' },
@@ -25,7 +26,10 @@ export default function PrevisualizacionReporteWidget({
     desgloseImpacto = []
   } = previsualizacion;
 
-  const sinDatos = !medicionesCompletas || estadoIndice === 'SIN_DATOS';
+  const sinDatos = !medicionesCompletas || estadoIndice !== 'CALCULADO';
+  const mensajeAviso = estadoIndice === 'INSUFICIENTE'
+    ? 'Solo algunas de las 4 métricas tienen mediciones registradas, por lo que el índice no se puede calcular. El reporte indicará "Insuficiente" en el índice de salud y marcará como "Sin datos" las métricas que faltan.'
+    : 'Ninguna de las 4 métricas tiene mediciones registradas, por lo que el índice no se puede calcular. El reporte indicará "Sin datos" en el índice de salud.';
 
   return (
     <div
@@ -60,7 +64,7 @@ export default function PrevisualizacionReporteWidget({
         </button>
       </div>
 
-      {/* Alerta FA-04.01 si aplica */}
+      {/* Aviso cuando el índice no se puede calcular */}
       {sinDatos && (
         <div
           style={{
@@ -73,7 +77,7 @@ export default function PrevisualizacionReporteWidget({
             color: '#92400e'
           }}
         >
-          <strong>Aviso (FA-04.01):</strong> No hay mediciones suficientes registradas para calcular el índice determinista. El reporte indicará un estado de <strong>"Sin datos" o "Insuficiente"</strong> en el índice de salud.
+          <strong>Aviso:</strong> {mensajeAviso}
         </div>
       )}
 
@@ -95,7 +99,7 @@ export default function PrevisualizacionReporteWidget({
             Índice de Salud General del Proyecto
           </span>
           <div style={{ fontSize: '1.8rem', fontWeight: '800', color: sinDatos ? '#64748b' : '#1e40af' }}>
-            {sinDatos ? 'Sin datos / Insuficiente' : `${indiceSaludGeneral_nullable}%`}
+            {textoIndice(estadoIndice, indiceSaludGeneral_nullable)}
           </div>
           <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
             {sinDatos
@@ -114,12 +118,12 @@ export default function PrevisualizacionReporteWidget({
               color: sinDatos ? '#475569' : (indiceSaludGeneral_nullable >= 80 ? '#15803d' : indiceSaludGeneral_nullable >= 50 ? '#b45309' : '#b91c1c')
             }}
           >
-            {previsualizacion.estadoSaludGlobal}
+            {etiquetaEstadoGlobal(estadoIndice, previsualizacion.estadoSaludGlobal)}
           </span>
         </div>
       </div>
 
-      {/* Desglose de Impacto Ordenado (FN-04) */}
+      {/* Desglose de impacto ordenado por criticidad */}
       <div style={{ marginBottom: '1.5rem' }}>
         <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.95rem', color: '#1e293b' }}>
           Desglose del Impacto por Métrica (Ordenado por Criticidad)
@@ -143,7 +147,7 @@ export default function PrevisualizacionReporteWidget({
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontWeight: '700', fontSize: '0.85rem', color: '#0f172a' }}>
-                      #{index + 1} {item.tipoMetrica}
+                      #{index + 1} {nombreMetrica(item.tipoMetrica)}
                     </span>
                     <span
                       style={{
@@ -177,14 +181,14 @@ export default function PrevisualizacionReporteWidget({
         </div>
       </div>
 
-      {/* Espacio para Notas Ejecutivas (FN-05, FN-06 & FA-06.01) */}
+      {/* Espacio para notas ejecutivas */}
       <div style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
           <label htmlFor="notasEjecutivas" style={{ fontSize: '0.9rem', fontWeight: '600', color: '#1e293b' }}>
             Notas Ejecutivas Propias (Opcionales)
           </label>
           <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-            FA-06.01: Si se omiten, el reporte se generará con el desglose automático
+            Si se omiten, el reporte se generará con el desglose automático
           </span>
         </div>
         <textarea
@@ -206,7 +210,7 @@ export default function PrevisualizacionReporteWidget({
         />
       </div>
 
-      {/* Acciones de Confirmación (FN-06, FN-07, FA-02.01) */}
+      {/* Acciones de confirmación */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
         <button
           onClick={onCancelar}
@@ -241,7 +245,7 @@ export default function PrevisualizacionReporteWidget({
             gap: '6px'
           }}
         >
-          {generando ? 'Guardando y Compilando PDF...' : 'Confirmar y Exportar a PDF (FN-07)'}
+          {generando ? 'Guardando y compilando PDF...' : 'Confirmar y exportar a PDF'}
         </button>
       </div>
     </div>

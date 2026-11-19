@@ -45,6 +45,7 @@ class TableroSaludDTO {
     nombreProyecto,
     versionUmbrales,
     estadoSaludGlobal,
+    estadoIndice,
     indiceSaludGeneral_nullable,
     indicadores = [],
     alertasActivas = []
@@ -53,6 +54,7 @@ class TableroSaludDTO {
     this.nombreProyecto = nombreProyecto;
     this.versionUmbrales = versionUmbrales;
     this.estadoSaludGlobal = estadoSaludGlobal;
+    this.estadoIndice = estadoIndice; // 'CALCULADO' | 'INSUFICIENTE' | 'SIN_DATOS'
     this.indiceSaludGeneral_nullable = indiceSaludGeneral_nullable;
     this.indicadores = indicadores;
     this.alertasActivas = alertasActivas;
@@ -74,7 +76,7 @@ class PrevisualizacionReporteDTO {
     this.proyectoId = proyectoId;
     this.versionReporteSiguiente = versionReporteSiguiente;
     this.estadoSaludGlobal = estadoSaludGlobal;
-    this.estadoIndice = estadoIndice; // 'CALCULADO' | 'SIN_DATOS'
+    this.estadoIndice = estadoIndice; // 'CALCULADO' | 'INSUFICIENTE' | 'SIN_DATOS'
     this.indiceSaludGeneral_nullable = indiceSaludGeneral_nullable;
     this.medicionesCompletas = medicionesCompletas;
     this.desgloseImpacto = desgloseImpacto;

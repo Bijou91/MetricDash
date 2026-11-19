@@ -1,57 +1,56 @@
-class TableroSaludApiClient {
-  constructor(baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000') {
-    this.baseUrl = baseUrl;
-  }
+// Rutas relativas (/api/...): en desarrollo las atiende el proxy de Vite, lo que también funciona
+// detrás de un túnel público. VITE_API_URL es opcional y solo se usa si se define explícitamente.
+const RAW_URL = import.meta.env.VITE_API_URL;
+const API_URL = RAW_URL ? RAW_URL.replace(/\/+$/, '') : '';
 
+async function leerError(res, mensajePorDefecto) {
+  const errorData = await res.json().catch(() => ({}));
+  return new Error(errorData.error || mensajePorDefecto);
+}
+
+class TableroSaludApiClient {
   async listarProyectos() {
-    const res = await fetch(`${this.baseUrl}/api/proyectos`);
+    const res = await fetch(`${API_URL}/api/proyectos`);
     if (!res.ok) throw new Error(`Error ${res.status}: Fallo al listar proyectos`);
     return res.json();
   }
 
-  // FN-01 & FN-02: Obtener estado consolidado del tablero
+  // Estado consolidado del tablero
   async obtenerTableroActual(proyectoId) {
-    const res = await fetch(`${this.baseUrl}/api/proyectos/${proyectoId}/tablero-salud`);
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.error || `Error ${res.status} al consultar tablero`);
-    }
+    const res = await fetch(`${API_URL}/api/proyectos/${proyectoId}/tablero-salud`);
+    if (!res.ok) throw await leerError(res, `Error ${res.status} al consultar el tablero`);
     return res.json();
   }
 
-  // FN-03, FN-04, FA-04.01, FN-05: Solicitar previsualización
+  // Previsualización del reporte
   async generarPrevisualizacion(proyectoId) {
-    const res = await fetch(`${this.baseUrl}/api/proyectos/${proyectoId}/reportes-salud/previsualizacion`);
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.error || `Error ${res.status} al obtener previsualización`);
-    }
+    const res = await fetch(`${API_URL}/api/proyectos/${proyectoId}/reportes-salud/previsualizacion`);
+    if (!res.ok) throw await leerError(res, `Error ${res.status} al obtener la previsualización`);
     return res.json();
   }
 
-  // FN-06, FA-06.01, FN-07, FE-01: Generar reporte versionado y PDF
+  // Generar reporte versionado y PDF
   async generarReporteSalud(proyectoId, { notasEjecutivas }) {
-    const res = await fetch(`${this.baseUrl}/api/proyectos/${proyectoId}/reportes-salud`, {
+    const res = await fetch(`${API_URL}/api/proyectos/${proyectoId}/reportes-salud`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        notasEjecutivas: notasEjecutivas || ''
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notasEjecutivas: notasEjecutivas || '' })
     });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Error al generar o guardar el reporte de salud. Por favor, reintente.');
-    }
+    if (!res.ok) throw await leerError(res, 'Error al generar o guardar el reporte de salud. Por favor, reintente.');
     return res.json();
   }
 
   async obtenerHistorialReportes(proyectoId) {
-    const res = await fetch(`${this.baseUrl}/api/proyectos/${proyectoId}/reportes-salud/historial`);
-    if (!res.ok) throw new Error('Error al consultar historial de reportes');
+    const res = await fetch(`${API_URL}/api/proyectos/${proyectoId}/reportes-salud/historial`);
+    if (!res.ok) throw new Error('Error al consultar el historial de reportes');
     return res.json();
+  }
+
+  // Descarga un reporte previo (el PDF se vuelve a compilar con el desglose guardado)
+  async descargarPdfReporte(proyectoId, reporteId) {
+    const res = await fetch(`${API_URL}/api/proyectos/${proyectoId}/reportes-salud/${reporteId}/pdf`);
+    if (!res.ok) throw await leerError(res, 'No se pudo descargar el PDF del reporte.');
+    return res.blob();
   }
 }
 
