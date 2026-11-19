@@ -6,11 +6,12 @@ import GestionActividadesSqaView from './views/GestionActividadesSqaView';
 import VistaRegistroPruebas from './views/VistaRegistroPruebas';
 import VistaAccionCorrectiva from './views/VistaAccionCorrectiva';
 import VistaTableroReporteSalud from './views/VistaTableroReporteSalud';
+import VistaCierrePeriodo from './views/VistaCierrePeriodo';
 import * as proyectosApi from './api/ProyectosApiClient';
 
 export default function App() {
   const [apiStatus, setApiStatus] = useState('Verificando conexión con el backend...');
-  const [tabActiva, setTabActiva] = useState('cu01'); // 'cu01' | 'cu02' | 'cu03' | 'cu04' | 'cu05' | 'cu06' | 'cu07'
+  const [tabActiva, setTabActiva] = useState('cu01'); // 'cu01' | 'cu02' | 'cu03' | 'cu04' | 'cu05' | 'cu06' | 'cu07' | 'cu08'
   const [proyectoActivo, setProyectoActivo] = useState(null);
   const [actividadSqaFocoId, setActividadSqaFocoId] = useState(null);
 
@@ -141,6 +142,17 @@ export default function App() {
           >
             Tablero y Reporte de Salud
           </button>
+          <button
+            type="button"
+            onClick={() => cambiarTab('cu08')}
+            className={`border-b-2 pb-2.5 text-sm font-semibold transition-colors ${
+              tabActiva === 'cu08'
+                ? 'border-blue-700 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Cierre del Periodo
+          </button>
         </nav>
       </header>
 
@@ -196,6 +208,12 @@ export default function App() {
           proyectoId
             ? <VistaTableroReporteSalud proyectoIdInicial={proyectoId} />
             : <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-800">Registre primero el proyecto del periodo para consultar el tablero de salud.</p>
+        )}
+
+        {tabActiva === 'cu08' && (
+          proyectoActivo
+            ? <VistaCierrePeriodo proyectoId={proyectoActivo.id} />
+            : <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-800">Registre primero el proyecto del periodo.</p>
         )}
       </main>
     </div>

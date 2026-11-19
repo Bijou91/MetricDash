@@ -22,6 +22,7 @@ const EstadoActividad = Object.freeze({
   PLANIFICADA: 'PLANIFICADA',
   EN_CURSO: 'EN_CURSO',
   REALIZADA: 'REALIZADA',
+  CANCELADA: 'CANCELADA',
 });
 
 const NivelSemaforo = Object.freeze({

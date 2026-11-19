@@ -37,6 +37,7 @@ const ESTADO_DB_A_DOMINIO = Object.freeze({
   EN_CURSO: EstadoActividad.EN_CURSO,
   DONE: EstadoActividad.REALIZADA,
   REALIZADA: EstadoActividad.REALIZADA,
+  CANCELADA: EstadoActividad.CANCELADA,
 });
 
 function inferirTipoArtefacto(actividad = {}) {

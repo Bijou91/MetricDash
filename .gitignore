@@ -41,3 +41,6 @@ yarn-error.log*
 *.swp
 *.swo
 .DS_Store
+
+# Material generado por Claude (diagramas y documentos)
+Claude outputs/

@@ -20,12 +20,18 @@ async function obtenerActivo(proyectoId) {
   return rows[0] ?? null;
 }
 
-// Obtener el periodo académico actualmente activo
-async function obtenerPeriodoActivo() {
-  const { rows } = await pool.query(
-    `SELECT * FROM academic_periods WHERE is_active = true ORDER BY created_at DESC LIMIT 1`,
+// Obtener el periodo académico actualmente activo.
+// Con tx (CU-08 FN-07) bloquea la fila para que dos cierres simultáneos no pasen la revalidación (FE-02).
+async function obtenerPeriodoActivo(tx) {
+  const { rows } = await (tx || pool).query(
+    `SELECT * FROM academic_periods WHERE is_active = true ORDER BY created_at DESC LIMIT 1${tx ? ' FOR UPDATE' : ''}`,
   );
   return rows[0] ?? null;
+}
+
+// CU-08 FN-09: el periodo queda CERRADO; is_active cambia hasta que el CU-01 abre el siguiente.
+async function cerrarPeriodo(periodoId, tx) {
+  await tx.query(`UPDATE academic_periods SET status = 'CERRADO' WHERE id = $1`, [periodoId]);
 }
 
 // Obtener el proyecto monitoreado registrado en el periodo activo (Monoproyecto)
@@ -321,6 +327,7 @@ async function actualizar(proyectoId, tx = pool) {
 module.exports = {
   obtenerActivo,
   obtenerPeriodoActivo,
+  cerrarPeriodo,
   obtenerProyectoPeriodoActivo,
   obtenerProyectoPeriodoActual: obtenerProyectoPeriodoActivo,
   existeProyectoEnPeriodo,
