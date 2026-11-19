@@ -28,7 +28,7 @@ async function guardar(defecto, corte, tx) {
   const { rows } = await tx.query(
     `INSERT INTO defects (cutoff_id, folio, title, description, severity, priority, detection_phase, origin_phase,
                           status, assigned_to, reported_by, confirmed_not_duplicate, review_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
     [corte.id, folio, defecto.descripcionDetallada.slice(0, 200), defecto.descripcionDetallada, defecto.severidad,
       defecto.prioridad, defecto.faseDeteccion, defecto.faseOrigen, defecto.estado, defecto.asignadoAId,
       defecto.reportadoPorId, defecto.confirmadoNoDuplicado, defecto.reviewId || null],
