@@ -287,10 +287,16 @@ async function actualizarEstadoActividad(actividadId, status) {
   return rows[0] ?? null;
 }
 
-// Eliminar proyecto y reiniciar para pruebas
+// Eliminar proyecto y reiniciar para pruebas (reabre el periodo si fue cerrado en CU-08)
 async function eliminarProyecto(proyectoId) {
   await pool.query(`DELETE FROM metric_configurations WHERE project_id = $1`, [proyectoId]);
-  const { rowCount } = await pool.query(`DELETE FROM monitored_projects WHERE id = $1`, [proyectoId]);
+  const { rows, rowCount } = await pool.query(
+    `DELETE FROM monitored_projects WHERE id = $1 RETURNING period_id`,
+    [proyectoId],
+  );
+  if (rows[0]?.period_id) {
+    await pool.query(`UPDATE academic_periods SET status = 'ABIERTO' WHERE id = $1`, [rows[0].period_id]);
+  }
   return rowCount > 0;
 }
 

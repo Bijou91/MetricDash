@@ -32,9 +32,13 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// CU-08 postcondición: un periodo CERRADO no admite nuevos registros (las rutas del CU-08 manejan su propio FE-02).
+// CU-08 postcondición: un periodo CERRADO no admite nuevos registros (las rutas del CU-08 manejan su propio FE-02; DELETE /proyectos/:id permite reiniciar pruebas).
 app.use('/api', async (req, res, next) => {
-  if (req.method === 'GET' || /\/cierres?(\/|$)/.test(req.path)) return next();
+  if (
+    req.method === 'GET' ||
+    /\/cierres?(\/|$)/.test(req.path) ||
+    (req.method === 'DELETE' && /^\/proyectos\/[^/]+$/.test(req.path))
+  ) return next();
   try {
     const periodo = await proyectoRepo.obtenerPeriodoActivo();
     if (periodo?.status === 'CERRADO') {
